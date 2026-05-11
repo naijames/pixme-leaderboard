@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixme Run Club Leaderboard</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f0f;color:#f0f0f0;min-height:100vh;padding:1.5rem}
+  .wrap{max-width:860px;margin:0 auto}
+  .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.75rem;gap:1rem;flex-wrap:wrap}
+  h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:.5rem}
+  .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;display:inline-flex;align-items:center;gap:4px}
+  .badge.live{background:#1a3a1a;color:#5cb85c;border:1px solid #2d5a2d}
+  .badge.wait{background:#2a2a2a;color:#888;border:1px solid #333}
+  .badge.err{background:#3a1a1a;color:#e05c5c;border:1px solid #5a2d2d}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+  .meta{font-size:12px;color:#666;margin-top:5px}
+  .btn{padding:8px 16px;border-radius:8px;border:1px solid #333;background:#1c1c1c;color:#f0f0f0;font-size:13px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}
+  .btn:hover{background:#2a2a2a}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.75rem}
+  .stat{background:#1a1a1a;border:1px solid #252525;border-radius:12px;padding:14px 16px}
+  .stat .lbl{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .stat .val{font-size:26px;font-weight:600;color:#fff}
+  .stat .sub{font-size:11px;color:#555;margin-top:3px}
+  .tbl-wrap{background:#1a1a1a;border:1px solid #252525;border-radius:12px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  th{padding:10px 14px;font-size:11px;font-weight:500;color:#555;text-align:left;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #252525}
+  th.r{text-align:right}
+  td{padding:13px 14px;border-bottom:1px solid #1f1f1f;font-size:13px}
+  td.r{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#1f1f1f}
+  .medal{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .m1{background:#b87c0a;color:#fff}
+  .m2{background:#6a6a6a;color:#fff}
+  .m3{background:#7a4a2a;color:#fff}
+  .mn{background:#252525;color:#666}
+  .ath{display:flex;align-items:center;gap:10px}
+  .av{width:34px;height:34px;border-radius:50%;background:#1a2e4a;color:#4a8eff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;overflow:hidden}
+  .av img{width:100%;height:100%;object-fit:cover}
+  .nm{font-weight:500;color:#f0f0f0}
+  .sub-txt{font-size:11px;color:#555;margin-top:2px}
+  .dist{background:#1a2e4a;color:#4a8eff;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
+  .bar-bg{background:#252525;border-radius:4px;height:5px;width:80px;display:inline-block;vertical-align:middle;overflow:hidden;margin-left:4px}
+  .bar-fill{height:100%;border-radius:4px;background:#FC4C02;transition:width .5s ease}
+  .empty{padding:3.5rem;text-align:center;color:#444;font-size:14px}
+  .footer{text-align:center;font-size:11px;color:#444;margin-top:1.25rem}
+  .spinning{animation:spin .8s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(max-width:600px){
+    .stats{grid-template-columns:repeat(3,1fr)}
+    .stat .val{font-size:20px}
+    .bar-bg{display:none}
+    th.r:last-child,td.r:last-child{display:none}
+    body{padding:1rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div>
+      <h1>🏆 Pixme Run Club
+        <span class="badge wait" id="badge"><span class="dot"></span> กำลังโหลด</span>
+      </h1>
+      <p class="meta" id="meta">กำลังเชื่อมต่อ Strava...</p>
+    </div>
+    <button class="btn" onclick="load()">
+      <span id="ref-icon">↻</span> รีเฟรช
+    </button>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="lbl">ระยะทางรวม</div>
+      <div class="val" id="s-dist">—</div>
+      <div class="sub">กิโลเมตร สัปดาห์นี้</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">นักกีฬา</div>
+      <div class="val" id="s-ath">—</div>
+      <div class="sub">คนที่ active</div>
+    </div>
+    <div class="stat">
+      <div class="lbl">กิจกรรม</div>
+      <div class="val" id="s-act">—</div>
+      <div class="sub">รายการ</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:42px">#</th>
+          <th>นักกีฬา</th>
+          <th class="r">กิจกรรม</th>
+          <th class="r">ระยะทาง</th>
+          <th class="r" style="width:120px">สัดส่วน</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr><td colspan="5"><div class="empty"><span class="spinning">↻</span> กำลังโหลด...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="footer" id="footer"></p>
+</div>
+
+<script>
+const PROXY = 'https://script.google.com/macros/s/AKfycbzSwF70f2ytJ6GpDW6Pexa_L3TzwdsGXAGPIZXxR3Fhe8nb4gKpjOUSDv1dY2q2YT6a/exec';
+let timer, countdown = 300;
+
+function setBadge(type, text) {
+  const b = document.getElementById('badge');
+  b.className = 'badge ' + type;
+  b.innerHTML = `<span class="dot"></span> ${text}`;
+}
+
+async function load() {
+  document.getElementById('ref-icon').classList.add('spinning');
+  setBadge('wait', 'กำลังโหลด');
+  try {
+    const res = await fetch(PROXY);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const activities = await res.json();
+    if (!Array.isArray(activities)) throw new Error(JSON.stringify(activities));
+    render(activities);
+    const now = new Date().toLocaleString('th-TH');
+    document.getElementById('meta').textContent = 'อัปเดต: ' + now;
+    setBadge('live', 'Live');
+    startCountdown();
+  } catch(e) {
+    setBadge('err', 'Error');
+    document.getElementById('meta').textContent = 'ดึงข้อมูลไม่ได้: ' + e.message;
+  }
+  document.getElementById('ref-icon').classList.remove('spinning');
+}
+
+function render(activities) {
+  const map = {};
+  activities.forEach(a => {
+    const k = ((a.athlete?.firstname||'') + ' ' + (a.athlete?.lastname||'')).trim();
+    if (!k) return;
+    if (!map[k]) map[k] = { name:k, photo:a.athlete?.profile_medium||'', distance:0, activities:0, types:{} };
+    map[k].distance += (a.distance||0) / 1000;
+    map[k].activities++;
+    const t = a.type || 'Other';
+    map[k].types[t] = (map[k].types[t]||0) + 1;
+  });
+  const sorted = Object.values(map).sort((a,b) => b.distance - a.distance);
+  const totalDist = sorted.reduce((s,a) => s + a.distance, 0);
+  document.getElementById('s-dist').textContent = totalDist.toFixed(1);
+  document.getElementById('s-ath').textContent = sorted.length;
+  document.getElementById('s-act').textContent = activities.length;
+  const tbody = document.getElementById('tbody');
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty">ไม่มีกิจกรรมสัปดาห์นี้ 😴</div></td></tr>';
+    return;
+  }
+  const maxDist = sorted[0].distance;
+  tbody.innerHTML = sorted.map((a, i) => {
+    const r = i + 1;
+    const mc = r===1?'m1':r===2?'m2':r===3?'m3':'mn';
+    const pct = maxDist > 0 ? Math.round((a.distance/maxDist)*100) : 0;
+    const topType = Object.entries(a.types).sort((x,y)=>y[1]-x[1])[0]?.[0] || '';
+    const emoji = topType==='Run'?'🏃':topType==='Ride'?'🚴':topType==='Walk'?'🚶':topType==='Swim'?'🏊':'⚡';
+    const isDefault = !a.photo || a.photo.includes('avatar/athlete');
+    const avInner = isDefault
+      ? a.name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase()
+      : `<img src="${a.photo}" alt="">`;
+    return `<tr>
+      <td><div class="medal ${mc}">${r}</div></td>
+      <td><div class="ath">
+        <div class="av">${avInner}</div>
+        <div>
+          <div class="nm">${a.name}</div>
+          <div class="sub-txt">${emoji} ${topType || 'Activity'}</div>
+        </div>
+      </div></td>
+      <td class="r">${a.activities}</td>
+      <td class="r"><span class="dist">${a.distance.toFixed(1)} km</span></td>
+      <td class="r">
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function startCountdown() {
+  clearInterval(timer);
+  countdown = 300;
+  timer = setInterval(() => {
+    countdown--;
+    const m = Math.floor(countdown/60), s = String(countdown%60).padStart(2,'0');
+    document.getElementById('footer').textContent = `รีเฟรชอัตโนมัติใน ${m}:${s} นาที • ข้อมูลจาก Strava`;
+    if (countdown <= 0) load();
+  }, 1000);
+}
+
+load();
+</script>
+</body>
+</html>
