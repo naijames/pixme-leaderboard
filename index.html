@@ -136,11 +136,13 @@ function load() {
     delete window[cbName];
     try {
       if (!Array.isArray(activities)) throw new Error(JSON.stringify(activities));
-      const range = getMonthRange();
+      const now = new Date();
+      const curYear = now.getFullYear();
+      const curMonth = String(now.getMonth() + 1).padStart(2, '0');
+      const prefix = curYear + '-' + curMonth;
       const filtered = activities.filter(function(a) {
-        if (!a.start_date) return false;
-        const d = new Date(a.start_date_local || a.start_date);
-        return d >= range.start && d < range.end;
+        const dateStr = a.start_date_local || a.start_date || '';
+        return dateStr.startsWith(prefix);
       });
       render(filtered);
       document.getElementById('meta').textContent = 'อัปเดต: ' + new Date().toLocaleString('th-TH');
