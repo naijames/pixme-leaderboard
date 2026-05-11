@@ -85,7 +85,6 @@
         <th>นักกีฬา</th>
         <th class="r">กิจกรรม</th>
         <th class="r">ระยะทางสะสม</th>
-        <th class="r" style="width:120px">สัดส่วน</th>
       </tr></thead>
       <tbody id="tbody">
         <tr><td colspan="5"><div class="empty"><span class="spinning">↻</span> กำลังโหลด...</div></td></tr>
@@ -199,12 +198,10 @@ function render(activities) {
       : '<img src="' + a.photo + '" alt="">';
     return '<tr>' +
       '<td><div class="medal ' + mc + '">' + r + '</div></td>' +
-      '<td><div class="ath"><div class="av">' + avInner + '</div>' +
-      '<div><div class="nm">' + a.name + '</div>' +
-      '<div class="sub-txt">' + emoji + ' ' + (topType || 'Activity') + '</div></div></div></td>' +
+      '<td><div class="nm">' + a.name + '</div><div class="sub-txt">' + emoji + ' ' + (topType || 'Activity') + '</div></td>' +
       '<td class="r">' + a.activities + '</td>' +
       '<td class="r"><span class="dist">' + a.distance.toFixed(1) + ' km</span></td>' +
-      '<td class="r"><div class="bar-bg"><div class="bar-fill" style="width:' + pct + '%"></div></div></td>' +
+
       '</tr>';
   }).join('');
 }
