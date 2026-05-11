@@ -139,7 +139,7 @@ function load() {
       const range = getMonthRange();
       const filtered = activities.filter(function(a) {
         if (!a.start_date) return false;
-        const d = new Date(a.start_date);
+        const d = new Date(a.start_date_local || a.start_date);
         return d >= range.start && d < range.end;
       });
       render(filtered);
