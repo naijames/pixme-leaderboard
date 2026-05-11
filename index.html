@@ -18,13 +18,13 @@
   .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
   .meta{font-size:12px;color:#666;margin-top:4px}
   .period{font-size:12px;color:#FC4C02;margin-top:3px;font-weight:500}
-  .right-col{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .right-col{display:flex;flex-direction:row;align-items:center;gap:8px;flex-shrink:0}
   .btn{padding:8px 14px;border-radius:8px;border:1px solid #333;background:#1c1c1c;color:#f0f0f0;font-size:13px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}
   .btn:hover{background:#2a2a2a}
   .month-select{padding:7px 12px;border-radius:8px;border:1px solid #333;background:#1c1c1c;color:#f0f0f0;font-size:13px;cursor:pointer;outline:none}
   .month-select:focus{border-color:#555}
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.75rem}
-  .stat{background:#1a1a1a;border:1px solid #252525;border-radius:12px;padding:14px 16px}
+  .stat{background:#1a1a1a;border:1px solid #252525;border-radius:12px;padding:14px 16px;text-align:center}
   .stat .lbl{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
   .stat .val{font-size:26px;font-weight:600;color:#fff}
   .stat .sub{font-size:11px;color:#555;margin-top:3px}
@@ -43,7 +43,7 @@
   .mn{background:#252525;color:#666}
   .nm{font-weight:500;color:#f0f0f0}
   .sub-txt{font-size:11px;color:#555;margin-top:2px}
-  .dist{background:#1a2e4a;color:#4a8eff;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
+  .dist{background:#1a2e4a;color:#fff;border-radius:20px;padding:5px 14px;font-size:14px;font-weight:700;letter-spacing:.02em}
   .empty{padding:3.5rem;text-align:center;color:#444;font-size:14px}
   .footer{text-align:center;font-size:11px;color:#444;margin-top:1.25rem}
   .spinning{display:inline-block;animation:spin .8s linear infinite}
@@ -82,7 +82,7 @@
         <th style="width:42px">#</th>
         <th style="width:1%;white-space:nowrap">นักกีฬา</th>
         <th class="r">ระยะทางสะสม</th>
-        <th class="r">กิจกรรม</th>
+        <th style="text-align:center">กิจกรรม</th>
       </tr></thead>
       <tbody id="tbody">
         <tr><td colspan="4"><div class="empty"><span class="spinning">↻</span> กำลังโหลด...</div></td></tr>
@@ -207,7 +207,7 @@ function render(athletes, isCurrent) {
       '<td><div class="medal '+mc+'">'+r+'</div></td>' +
       '<td style="white-space:nowrap"><div class="nm">'+a.name+'</div><div class="sub-txt">'+emoji+' '+(a.topType||'Activity')+'</div></td>' +
       '<td class="r"><span class="dist">'+a.distance.toFixed(1)+' km</span></td>' +
-      '<td class="r">'+a.activities+'</td>' +
+      '<td style="text-align:center">'+a.activities+'</td>' +
       '</tr>';
   }).join('');
 }
