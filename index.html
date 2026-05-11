@@ -95,7 +95,7 @@
 </div>
 
 <script>
-const PROXY = 'https://script.google.com/macros/s/AKfycbxjx-NmcetKbsM_lJgwK6baVIUxXM-gI9gLdYOuOHG-jA4u9r3ZSxyHHxKasuadTQWb/exec';
+const PROXY = 'https://script.google.com/macros/s/AKfycbw9BBwVzBEPapMrQhcqb8rkdSSqVMGClvImY9whXS9t6W1kzAmR1O1bJPziLEJLgS2f/exec';
 let timer, countdown = 300;
 
 function getMonthRange() {
@@ -206,14 +206,31 @@ function render(activities) {
   }).join('');
 }
 
+function getIntervalSec() {
+  // Thailand time = UTC+7
+  const thHour = (new Date().getUTCHours() + 7) % 24;
+  if (thHour >= 0  && thHour < 4)  return 0;    // หยุด
+  if (thHour >= 4  && thHour < 5)  return 300;  // 5 นาที
+  if (thHour >= 5  && thHour < 10) return 60;   // 1 นาที
+  if (thHour >= 10 && thHour < 16) return 900;  // 15 นาที
+  if (thHour >= 16 && thHour < 21) return 60;   // 1 นาที
+  return 900;                                    // 15 นาที
+}
+
 function startCountdown() {
   clearInterval(timer);
-  countdown = 300;
+  const sec = getIntervalSec();
+  if (sec === 0) {
+    document.getElementById('footer').textContent = 'หยุดอัปเดตช่วงนี้ (00:01–04:00) • Pixme Run Club';
+    return;
+  }
+  countdown = sec;
   timer = setInterval(function() {
     countdown--;
     const m = Math.floor(countdown / 60);
     const s = String(countdown % 60).padStart(2, '0');
-    document.getElementById('footer').textContent = 'รีเฟรชอัตโนมัติใน ' + m + ':' + s + ' นาที • Pixme Run Club';
+    const label = sec === 60 ? '1 นาที' : sec === 300 ? '5 นาที' : '15 นาที';
+    document.getElementById('footer').textContent = 'รีเฟรชทุก ' + label + ' • ครั้งถัดไปใน ' + m + ':' + s + ' • Pixme Run Club';
     if (countdown <= 0) load();
   }, 1000);
 }
