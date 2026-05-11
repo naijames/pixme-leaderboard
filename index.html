@@ -12,13 +12,17 @@
   h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
   .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500;display:inline-flex;align-items:center;gap:5px}
   .badge.live{background:#1a3a1a;color:#5cb85c;border:1px solid #2d5a2d}
+  .badge.archive{background:#1a2a3a;color:#4a8eff;border:1px solid #2d4a6a}
   .badge.wait{background:#2a2a2a;color:#888;border:1px solid #333}
   .badge.err{background:#3a1a1a;color:#e05c5c;border:1px solid #5a2d2d}
   .dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
-  .meta{font-size:12px;color:#666;margin-top:5px}
+  .meta{font-size:12px;color:#666;margin-top:4px}
   .period{font-size:12px;color:#FC4C02;margin-top:3px;font-weight:500}
-  .btn{padding:8px 16px;border-radius:8px;border:1px solid #333;background:#1c1c1c;color:#f0f0f0;font-size:13px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}
+  .right-col{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .btn{padding:8px 14px;border-radius:8px;border:1px solid #333;background:#1c1c1c;color:#f0f0f0;font-size:13px;cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:6px}
   .btn:hover{background:#2a2a2a}
+  .month-select{padding:7px 12px;border-radius:8px;border:1px solid #333;background:#1c1c1c;color:#f0f0f0;font-size:13px;cursor:pointer;outline:none}
+  .month-select:focus{border-color:#555}
   .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.75rem}
   .stat{background:#1a1a1a;border:1px solid #252525;border-radius:12px;padding:14px 16px}
   .stat .lbl{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
@@ -28,7 +32,7 @@
   table{width:100%;border-collapse:collapse}
   th{padding:10px 14px;font-size:11px;font-weight:500;color:#555;text-align:left;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #252525}
   th.r{text-align:right}
-  td{padding:12px 14px;border-bottom:1px solid #1f1f1f;font-size:13px}
+  td{padding:12px 14px;border-bottom:1px solid #1f1f1f;font-size:13px;vertical-align:middle}
   td.r{text-align:right;font-variant-numeric:tabular-nums}
   tr:last-child td{border-bottom:none}
   tr:hover td{background:#1f1f1f}
@@ -37,24 +41,14 @@
   .m2{background:#6a6a6a;color:#fff}
   .m3{background:#7a4a2a;color:#fff}
   .mn{background:#252525;color:#666}
-  .ath{display:flex;align-items:center;gap:10px}
-  .av{width:34px;height:34px;border-radius:50%;background:#1a2e4a;color:#4a8eff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;overflow:hidden}
-  .av img{width:100%;height:100%;object-fit:cover}
   .nm{font-weight:500;color:#f0f0f0}
   .sub-txt{font-size:11px;color:#555;margin-top:2px}
   .dist{background:#1a2e4a;color:#4a8eff;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
-  .bar-bg{background:#252525;border-radius:4px;height:5px;width:80px;display:inline-block;vertical-align:middle;overflow:hidden;margin-left:4px}
-  .bar-fill{height:100%;border-radius:4px;background:#FC4C02;transition:width .5s ease}
   .empty{padding:3.5rem;text-align:center;color:#444;font-size:14px}
   .footer{text-align:center;font-size:11px;color:#444;margin-top:1.25rem}
   .spinning{display:inline-block;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-  @media(max-width:580px){
-    .bar-bg{display:none}
-    th.r:last-child,td.r:last-child{display:none}
-    body{padding:1rem}
-    .stat .val{font-size:20px}
-  }
+  @media(max-width:580px){body{padding:1rem}.stat .val{font-size:20px}}
 </style>
 </head>
 <body>
@@ -67,13 +61,17 @@
       <p class="period" id="period"></p>
       <p class="meta" id="meta">กำลังเชื่อมต่อ Strava...</p>
     </div>
-    <button class="btn" onclick="load()">
-      <span id="ref-icon">↻</span> รีเฟรช
-    </button>
+    <div class="right-col">
+      <select class="month-select" id="month-select" onchange="onMonthChange()" style="display:none">
+      </select>
+      <button class="btn" id="refresh-btn" onclick="load()" style="display:none">
+        <span id="ref-icon">↻</span> รีเฟรช
+      </button>
+    </div>
   </div>
 
   <div class="stats">
-    <div class="stat"><div class="lbl">ระยะทางรวม</div><div class="val" id="s-dist">—</div><div class="sub">กิโลเมตร เดือนนี้</div></div>
+    <div class="stat"><div class="lbl">ระยะทางรวม</div><div class="val" id="s-dist">—</div><div class="sub">กิโลเมตร</div></div>
     <div class="stat"><div class="lbl">นักกีฬา</div><div class="val" id="s-ath">—</div><div class="sub">คนที่ active</div></div>
     <div class="stat"><div class="lbl">กิจกรรม</div><div class="val" id="s-act">—</div><div class="sub">รายการ</div></div>
   </div>
@@ -87,7 +85,7 @@
         <th class="r">กิจกรรม</th>
       </tr></thead>
       <tbody id="tbody">
-        <tr><td colspan="5"><div class="empty"><span class="spinning">↻</span> กำลังโหลด...</div></td></tr>
+        <tr><td colspan="4"><div class="empty"><span class="spinning">↻</span> กำลังโหลด...</div></td></tr>
       </tbody>
     </table>
   </div>
@@ -95,17 +93,14 @@
 </div>
 
 <script>
-const PROXY = 'https://script.google.com/macros/s/AKfycbw9BBwVzBEPapMrQhcqb8rkdSSqVMGClvImY9whXS9t6W1kzAmR1O1bJPziLEJLgS2f/exec';
-let timer, countdown = 300;
-
-function getMonthRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  const end = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
-  return { start: start, end: end };
-}
-
+const PROXY = 'https://script.google.com/macros/s/AKfycbxB2GQKfoAGneJlCfTDj6MyDxbWwg5U9h7if1hbORAAXQf6JJ5Pg1lPzIKGRX8lSAZJ/exec';
 const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+let timer, countdown = 0, selectedMonth = '';
+
+function formatMonth(m) {
+  const parts = m.split('-');
+  return MONTH_TH[parseInt(parts[1])-1] + ' ' + (parseInt(parts[0])+543);
+}
 
 function setBadge(type, text) {
   const b = document.getElementById('badge');
@@ -113,14 +108,25 @@ function setBadge(type, text) {
   b.innerHTML = '<span class="dot"></span> ' + text;
 }
 
+function getIntervalSec() {
+  const h = (new Date().getUTCHours() + 7) % 24;
+  if (h >= 0  && h < 4)  return 0;
+  if (h >= 4  && h < 5)  return 300;
+  if (h >= 5  && h < 10) return 60;
+  if (h >= 10 && h < 16) return 900;
+  if (h >= 16 && h < 21) return 60;
+  return 900;
+}
+
+function onMonthChange() {
+  selectedMonth = document.getElementById('month-select').value;
+  load();
+}
+
 function load() {
   document.getElementById('ref-icon').classList.add('spinning');
   setBadge('wait', 'กำลังโหลด');
-
-  const range = getMonthRange();
-  const now = new Date();
-  document.getElementById('period').textContent =
-    '📅 1–' + now.getDate() + ' ' + MONTH_TH[now.getMonth()] + ' ' + (now.getFullYear() + 543);
+  clearInterval(timer);
 
   const cbName = 'cb_' + Date.now();
   const timeout = setTimeout(function() {
@@ -130,15 +136,37 @@ function load() {
     document.getElementById('ref-icon').classList.remove('spinning');
   }, 15000);
 
-  window[cbName] = function(activities) {
+  window[cbName] = function(res) {
     clearTimeout(timeout);
     delete window[cbName];
     try {
-      if (!Array.isArray(activities)) throw new Error(JSON.stringify(activities));
-      render(activities);
+      // Update month dropdown
+      const sel = document.getElementById('month-select');
+      sel.innerHTML = '';
+      (res.availableMonths || []).forEach(function(m) {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = formatMonth(m);
+        if (m === res.month) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      sel.style.display = 'block';
+      document.getElementById('refresh-btn').style.display = 'flex';
+
+      // Update period label
+      const parts = res.month.split('-');
+      const y = parseInt(parts[0]), mo = parseInt(parts[1]);
+      const now = new Date();
+      const isCurrentMonth = res.isCurrent;
+      const lastDay = isCurrentMonth ? now.getDate() : new Date(y, mo, 0).getDate();
+      document.getElementById('period').textContent = '📅 1–' + lastDay + ' ' + MONTH_TH[mo-1] + ' ' + (y+543);
+
+      render(res.data, res.isCurrent);
       document.getElementById('meta').textContent = 'อัปเดต: ' + new Date().toLocaleString('th-TH');
-      setBadge('live', 'Live');
-      startCountdown();
+      setBadge(res.isCurrent ? 'live' : 'archive', res.isCurrent ? 'Live' : formatMonth(res.month));
+
+      if (res.isCurrent) startCountdown();
+      else document.getElementById('footer').textContent = 'ข้อมูลสิ้นเดือน ' + formatMonth(res.month) + ' • Pixme Run Club';
     } catch(e) {
       setBadge('err', 'Error');
       document.getElementById('meta').textContent = 'ข้อมูลผิดพลาด: ' + e.message;
@@ -147,7 +175,8 @@ function load() {
   };
 
   const s = document.createElement('script');
-  s.src = PROXY + '?callback=' + cbName;
+  const url = PROXY + '?callback=' + cbName + (selectedMonth ? '&month=' + selectedMonth : '');
+  s.src = url;
   s.onerror = function() {
     clearTimeout(timeout);
     delete window[cbName];
@@ -158,63 +187,29 @@ function load() {
   document.head.appendChild(s);
 }
 
-function render(activities) {
-  const map = {};
-  activities.forEach(function(a) {
-    const fn = (a.athlete && a.athlete.firstname) ? a.athlete.firstname : '';
-    const ln = (a.athlete && a.athlete.lastname) ? a.athlete.lastname : '';
-    const k = (fn + ' ' + ln).trim();
-    if (!k) return;
-    if (!map[k]) map[k] = { name: k, photo: (a.athlete && a.athlete.profile_medium) || '', distance: 0, activities: 0, types: {} };
-    map[k].distance += (a.distance || 0) / 1000;
-    map[k].activities++;
-    const t = a.type || 'Other';
-    map[k].types[t] = (map[k].types[t] || 0) + 1;
-  });
-
-  const sorted = Object.values(map).sort(function(a, b) { return b.distance - a.distance; });
-  const totalDist = sorted.reduce(function(s, a) { return s + a.distance; }, 0);
+function render(athletes, isCurrent) {
+  const totalDist = athletes.reduce(function(s,a){return s+a.distance;},0);
+  const totalAct  = athletes.reduce(function(s,a){return s+a.activities;},0);
   document.getElementById('s-dist').textContent = totalDist.toFixed(1);
-  document.getElementById('s-ath').textContent = sorted.length;
-  document.getElementById('s-act').textContent = activities.length;
+  document.getElementById('s-ath').textContent  = athletes.length;
+  document.getElementById('s-act').textContent  = totalAct;
 
   const tbody = document.getElementById('tbody');
-  if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="5"><div class="empty">ไม่มีกิจกรรมเดือนนี้ 😴</div></td></tr>';
+  if (!athletes.length) {
+    tbody.innerHTML = '<tr><td colspan="4"><div class="empty">ไม่มีกิจกรรมเดือนนี้ 😴</div></td></tr>';
     return;
   }
-
-  const maxDist = sorted[0].distance;
-  tbody.innerHTML = sorted.map(function(a, i) {
-    const r = i + 1;
+  tbody.innerHTML = athletes.map(function(a, i) {
+    const r = i+1;
     const mc = r===1?'m1':r===2?'m2':r===3?'m3':'mn';
-    const pct = maxDist > 0 ? Math.round((a.distance / maxDist) * 100) : 0;
-    const types = Object.entries(a.types).sort(function(x,y){ return y[1]-x[1]; });
-    const topType = types[0] ? types[0][0] : '';
-    const emoji = topType==='Run'?'🏃':topType==='Ride'?'🚴':topType==='Walk'?'🚶':topType==='Swim'?'🏊':'⚡';
-    const isDefault = !a.photo || a.photo.indexOf('avatar/athlete') >= 0;
-    const avInner = isDefault
-      ? a.name.split(' ').filter(function(w){return w;}).map(function(w){return w[0];}).join('').slice(0,2).toUpperCase()
-      : '<img src="' + a.photo + '" alt="">';
+    const emoji = a.topType==='Run'?'🏃':a.topType==='Ride'?'🚴':a.topType==='Walk'?'🚶':a.topType==='Swim'?'🏊':'⚡';
     return '<tr>' +
-      '<td><div class="medal ' + mc + '">' + r + '</div></td>' +
-      '<td style="white-space:nowrap"><div class="nm">' + a.name + '</div><div class="sub-txt">' + emoji + ' ' + (topType || 'Activity') + '</div></td>' +
-      '<td class="r"><span class="dist">' + a.distance.toFixed(1) + ' km</span></td>' +
-      '<td class="r">' + a.activities + '</td>' +
-
+      '<td><div class="medal '+mc+'">'+r+'</div></td>' +
+      '<td style="white-space:nowrap"><div class="nm">'+a.name+'</div><div class="sub-txt">'+emoji+' '+(a.topType||'Activity')+'</div></td>' +
+      '<td class="r"><span class="dist">'+a.distance.toFixed(1)+' km</span></td>' +
+      '<td class="r">'+a.activities+'</td>' +
       '</tr>';
   }).join('');
-}
-
-function getIntervalSec() {
-  // Thailand time = UTC+7
-  const thHour = (new Date().getUTCHours() + 7) % 24;
-  if (thHour >= 0  && thHour < 4)  return 0;    // หยุด
-  if (thHour >= 4  && thHour < 5)  return 300;  // 5 นาที
-  if (thHour >= 5  && thHour < 10) return 60;   // 1 นาที
-  if (thHour >= 10 && thHour < 16) return 900;  // 15 นาที
-  if (thHour >= 16 && thHour < 21) return 60;   // 1 นาที
-  return 900;                                    // 15 นาที
 }
 
 function startCountdown() {
@@ -227,10 +222,9 @@ function startCountdown() {
   countdown = sec;
   timer = setInterval(function() {
     countdown--;
-    const m = Math.floor(countdown / 60);
-    const s = String(countdown % 60).padStart(2, '0');
-    const label = sec === 60 ? '1 นาที' : sec === 300 ? '5 นาที' : '15 นาที';
-    document.getElementById('footer').textContent = 'รีเฟรชทุก ' + label + ' • ครั้งถัดไปใน ' + m + ':' + s + ' • Pixme Run Club';
+    const m = Math.floor(countdown/60), s = String(countdown%60).padStart(2,'0');
+    const label = sec===60?'1 นาที':sec===300?'5 นาที':'15 นาที';
+    document.getElementById('footer').textContent = 'รีเฟรชทุก '+label+' • ครั้งถัดไปใน '+m+':'+s+' • Pixme Run Club';
     if (countdown <= 0) load();
   }, 1000);
 }
