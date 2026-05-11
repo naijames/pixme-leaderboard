@@ -96,7 +96,7 @@
 </div>
 
 <script>
-const PROXY = 'https://script.google.com/macros/s/AKfycbzgN8OchakEty4CCturHfrWdrOvUYUGnFN49g_ts5uI3XNEEENZJ3prI_0swXTa_L9C/exec';
+const PROXY = 'https://script.google.com/macros/s/AKfycbxjx-NmcetKbsM_lJgwK6baVIUxXM-gI9gLdYOuOHG-jA4u9r3ZSxyHHxKasuadTQWb/exec';
 let timer, countdown = 300;
 
 function getMonthRange() {
@@ -136,15 +136,7 @@ function load() {
     delete window[cbName];
     try {
       if (!Array.isArray(activities)) throw new Error(JSON.stringify(activities));
-      const now = new Date();
-      const curYear = now.getFullYear();
-      const curMonth = String(now.getMonth() + 1).padStart(2, '0');
-      const prefix = curYear + '-' + curMonth;
-      const filtered = activities.filter(function(a) {
-        const dateStr = a.start_date_local || a.start_date || '';
-        return dateStr.startsWith(prefix);
-      });
-      render(filtered);
+      render(activities);
       document.getElementById('meta').textContent = 'อัปเดต: ' + new Date().toLocaleString('th-TH');
       setBadge('live', 'Live');
       startCountdown();
