@@ -98,7 +98,7 @@
 </div>
 
 <script>
-const PROXY = 'https://script.google.com/macros/s/AKfycbxxQNBbf1T5LXD_JdZjRes87WJvEdRwbvs0e1k0s0Aa5SLpHUlpJjrMK9kRHVKMJ8KU/exec';
+const PROXY = 'https://script.google.com/macros/s/AKfycbxsxLAn6Wh-FYeCs-Xw7oq5FUaKoEKgA5GLtHhLzxP2QAXEyxIm_7Z7qQ_VVO7G-FOm/exec';
 const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 let timer, countdown = 0, selectedMonth = '';
 
@@ -215,7 +215,7 @@ function render(athletes, isCurrent) {
     const emoji = a.topType==='Run'?'🏃':a.topType==='Ride'?'🚴':a.topType==='Walk'?'🚶':a.topType==='Swim'?'🏊':'⚡';
     return '<tr>' +
       '<td><div class="medal '+mc+'">'+r+'</div></td>' +
-      '<td style="white-space:nowrap"><div class="nm">'+a.name+'</div><div class="sub-txt">'+emoji+' '+(a.topType||'Activity')+'</div></td>' +
+      '<td style="white-space:nowrap"><div class="nm">'+(a.athleteId?'<a href="https://www.strava.com/athletes/'+a.athleteId+'" target="_blank" style="color:inherit;text-decoration:none">'+a.name+'</a>':a.name)+'</div><div class="sub-txt">'+emoji+' '+(a.topType||'Activity')+'</div></td>' +
       '<td class="r"><span class="dist">'+a.distance.toFixed(1)+' km</span></td>' +
       '<td style="text-align:center">'+a.activities+'</td>' +
       '</tr>';
