@@ -34,9 +34,9 @@
   .stat .lbl{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
   .stat .val{font-size:26px;font-weight:600;color:#fff}
   .stat .sub{font-size:11px;color:#555;margin-top:3px}
-  .tbl-wrap{background:#1a1a1a;border:1px solid #252525;border-radius:12px;overflow:hidden}
+  .tbl-wrap{background:#1a1a1a;border:1px solid #252525;border-radius:12px;overflow:hidden;max-height:70vh;overflow-y:auto;-ms-overflow-style:none;scrollbar-width:none}.tbl-wrap::-webkit-scrollbar{display:none}
   table{width:100%;border-collapse:collapse}
-  th{padding:10px 14px;font-size:11px;font-weight:500;color:#555;text-align:left;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #252525}
+  th{padding:10px 14px;font-size:11px;font-weight:500;color:#555;text-align:left;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #252525;position:sticky;top:0;background:#1a1a1a;z-index:1}
   th.r{text-align:right}
   td{padding:12px 14px;border-bottom:1px solid #1f1f1f;font-size:13px;vertical-align:middle}
   td.r{text-align:right;font-variant-numeric:tabular-nums}
@@ -64,7 +64,6 @@
       <h1>🏆 Pixme Run Club
         <span class="badge wait" id="badge"><span class="dot"></span> กำลังโหลด</span>
       </h1>
-      <p class="period" id="period"></p>
       <p class="meta" id="meta">กำลังเชื่อมต่อ Strava...</p>
     </div>
     <div class="right-col">
@@ -159,16 +158,18 @@ function load() {
       sel.style.display = 'block';
       document.getElementById('refresh-btn').style.display = 'flex';
 
-      // Update period label
+      // Update meta: "update: 1-13 May 26 hh:mm"
       const parts = res.month.split('-');
       const y = parseInt(parts[0]), mo = parseInt(parts[1]);
       const now = new Date();
-      const isCurrentMonth = res.isCurrent;
-      const lastDay = isCurrentMonth ? now.getDate() : new Date(y, mo, 0).getDate();
-      document.getElementById('period').textContent = '📅 1–' + lastDay + ' ' + MONTH_TH[mo-1] + ' ' + (y+543);
+      const lastDay = res.isCurrent ? now.getDate() : new Date(y, mo, 0).getDate();
+      const MONTH_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const hh = String(now.getHours()).padStart(2,'0');
+      const mm = String(now.getMinutes()).padStart(2,'0');
+      const yy = String(y).slice(-2);
+      document.getElementById('meta').textContent = 'update: 1-' + lastDay + ' ' + MONTH_EN[mo-1] + ' ' + yy + ' ' + hh + ':' + mm;
 
       render(res.data, res.isCurrent);
-      document.getElementById('meta').textContent = 'อัปเดต: ' + new Date().toLocaleString('th-TH');
       setBadge(res.isCurrent ? 'live' : 'archive', res.isCurrent ? 'Live' : formatMonth(res.month));
 
       if (res.isCurrent) startCountdown();
@@ -218,19 +219,27 @@ function render(athletes, isCurrent) {
   }).join('');
 }
 
+function daysLeft() {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+  return lastDay - now.getDate();
+}
+
 function startCountdown() {
   clearInterval(timer);
   const sec = getIntervalSec();
+  const dl = daysLeft();
+  const dlText = dl === 0 ? 'วันสุดท้ายของเดือน! 🔥' : dl + ' วันจนจบเดือน';
   if (sec === 0) {
-    document.getElementById('footer').textContent = 'หยุดอัปเดตช่วงนี้ (00:01–04:00) • Pixme Run Club';
+    document.getElementById('footer').textContent = dlText + ' • หยุดอัปเดตช่วงนี้';
     return;
   }
   countdown = sec;
   timer = setInterval(function() {
     countdown--;
     const m = Math.floor(countdown/60), s = String(countdown%60).padStart(2,'0');
-    const label = sec===60?'1 นาที':sec===300?'5 นาที':'15 นาที';
-    document.getElementById('footer').textContent = 'รีเฟรชทุก '+label+' • ครั้งถัดไปใน '+m+':'+s+' • Pixme Run Club';
+    const label = sec===60?'1 min':sec===300?'5 min':'15 min';
+    document.getElementById('footer').textContent = dlText + ' • next update in ' + m + ':' + s;
     if (countdown <= 0) load();
   }, 1000);
 }
