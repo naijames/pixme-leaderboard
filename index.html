@@ -232,7 +232,7 @@ function startCountdown() {
   clearInterval(timer);
   const sec = getIntervalSec();
   const dl = daysLeft();
-  const dlText = dl === 0 ? 'วันสุดท้ายของเดือน! 🔥' : dl + ' วันจนจบเดือน';
+  const dlText = dl === 0 ? 'วันสุดท้ายของเดือน! 🔥' : dl + ' วันจบเดือน';
   if (sec === 0) {
     document.getElementById('footer').textContent = dlText + ' • หยุดอัปเดตช่วงนี้';
     return;
