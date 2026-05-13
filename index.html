@@ -166,8 +166,11 @@ function load() {
       const MONTH_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const hh = String(now.getHours()).padStart(2,'0');
       const mm = String(now.getMinutes()).padStart(2,'0');
+      const dd = String(now.getDate()).padStart(2,'0');
       const yy = String(y).slice(-2);
-      document.getElementById('meta').textContent = 'update: 1-' + lastDay + ' ' + MONTH_EN[mo-1] + ' ' + yy + ' ' + hh + ':' + mm;
+      const dl2 = daysLeft();
+      const dlStr = dl2 === 0 ? 'last day! 🔥' : dl2 + ' days left';
+      document.getElementById('meta').innerHTML = 'update: ' + dd + ' ' + MONTH_EN[mo-1] + ' ' + yy + ' / ' + hh + ':' + mm + ' / <span style="color:#FC4C02;font-weight:500">' + dlStr + '</span>';
 
       render(res.data, res.isCurrent);
       setBadge(res.isCurrent ? 'live' : 'archive', res.isCurrent ? 'Live' : formatMonth(res.month));
