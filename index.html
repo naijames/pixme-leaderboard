@@ -98,7 +98,7 @@
 </div>
 
 <script>
-const PROXY = 'https://script.google.com/macros/s/AKfycbxsxLAn6Wh-FYeCs-Xw7oq5FUaKoEKgA5GLtHhLzxP2QAXEyxIm_7Z7qQ_VVO7G-FOm/exec';
+const PROXY = 'https://script.google.com/macros/s/AKfycbyNiJlyiiJxAT4X9hlXUescpTGv4bzaW9nzDreiJ41Tc3e0_CDLT8qi6rs736Tctd5V/exec';
 const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 let timer, countdown = 0, selectedMonth = '';
 
@@ -232,7 +232,7 @@ function startCountdown() {
   clearInterval(timer);
   const sec = getIntervalSec();
   const dl = daysLeft();
-  const dlText = dl === 0 ? 'วันสุดท้ายของเดือน! 🔥' : dl + ' วันจบเดือน';
+  const dlText = dl === 0 ? 'วันสุดท้ายของเดือน! 🔥' : dl + ' วันจะจบเดือน';
   if (sec === 0) {
     document.getElementById('footer').textContent = dlText + ' • หยุดอัปเดตช่วงนี้';
     return;
