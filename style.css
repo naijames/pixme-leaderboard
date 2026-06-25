@@ -990,6 +990,7 @@ body::-webkit-scrollbar {
 .calendar-labels-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
   text-align: center;
   font-size: 0.65rem;
   font-weight: 600;
@@ -1060,6 +1061,7 @@ body::-webkit-scrollbar {
 .day-bar-fill.walk::after { content: "🚶"; }
 .day-bar-fill.badminton::after { content: "🏸"; }
 .day-bar-fill.yoga::after { content: "🧘"; }
+.day-bar-fill.ride::after { content: "🚴"; }
 
 /* Activity Workout list (Mockup Cards with line graphs) */
 .workout-list {

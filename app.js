@@ -112,11 +112,88 @@ const MOCK_LOGS = {
   ]
 };
 
+// Seeded PRNG for deterministic simulation
+function getSeededRandom(seed) {
+  let h = 17957;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+  }
+  return function() {
+    h = (h + 0x9e3779b9) | 0;
+    let z = h;
+    z ^= z >>> 16;
+    z = Math.imul(z, 0x21f0aa7b);
+    z ^= z >>> 15;
+    z = Math.imul(z, 0x735a2d97);
+    z ^= z >>> 15;
+    return (z >>> 0) / 4294967296;
+  };
+}
+
+function getMockKey(name) {
+  if (!name) return null;
+  if (MOCK_LOGS[name]) return name;
+  if (MOCK_AVATARS[name]) return name;
+  
+  const cleanStr = (s) => s.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
+                           .replace(/[^a-zA-Z0-9]/g, '')
+                           .toLowerCase();
+                           
+  const cleanInput = cleanStr(name);
+  if (!cleanInput) return null;
+  
+  const allKeys = Array.from(new Set([...Object.keys(MOCK_LOGS), ...Object.keys(MOCK_AVATARS)]));
+  
+  // 1. First word match (length >= 3)
+  const firstWordMatch = name.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
+                             .replace(/[^a-zA-Z0-9\s]/g, '')
+                             .trim()
+                             .split(/\s+/)[0]
+                             .toLowerCase();
+  if (firstWordMatch && firstWordMatch.length >= 3) {
+    for (const key of allKeys) {
+      const cleanKey = key.toLowerCase();
+      if (cleanKey.includes(firstWordMatch)) {
+        return key;
+      }
+    }
+  }
+
+  // 2. Substring match
+  for (const key of allKeys) {
+    const cleanKey = cleanStr(key);
+    if (cleanKey.includes(cleanInput) || cleanInput.includes(cleanKey)) {
+      return key;
+    }
+  }
+  
+  // 3. Word-based match
+  for (const key of allKeys) {
+    const inputWords = name.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
+                           .toLowerCase()
+                           .split(/\s+/)
+                           .filter(w => w.length > 0);
+    const keyWords = key.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+    
+    for (const iw of inputWords) {
+      if (iw.length < 2) continue; // skip single letters
+      for (const kw of keyWords) {
+        if (kw.length < 2) continue;
+        if (kw.startsWith(iw) || iw.startsWith(kw)) {
+          return key;
+        }
+      }
+    }
+  }
+  return null;
+}
+
 // Default generic workout generator for athletes not defined in MOCK_LOGS
 function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, actualMovingTime) {
   const monthInfo = getSelectedMonthInfo();
-  if (MOCK_LOGS[name]) {
-    return MOCK_LOGS[name].map(w => ({
+  const mockKey = getMockKey(name);
+  if (mockKey && MOCK_LOGS[mockKey]) {
+    return MOCK_LOGS[mockKey].map(w => ({
       ...w,
       date: w.date.replace('มิ.ย. 69', `${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`)
     }));
@@ -125,7 +202,6 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
   const list = [];
   const totalDist = rawDistance || 0;
   const count = rawActivitiesCount || 1; // Default to 1 if no activities count
-  const distPerAct = totalDist > 0 ? totalDist / count : 0;
   
   // Set realistic paces (in seconds per km)
   let paceSec = 390; // Default 6:30 min/km for Run
@@ -136,11 +212,10 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
   const defaultMovingTime = topSport === 'Yoga' ? 3600 // 1 hour
     : topSport === 'Badminton' ? 7200  // 2 hours
     : 5400; // 1.5 hours default
+    
+  const rng = getSeededRandom(name);
   
-  const timePerAct = actualMovingTime !== undefined && actualMovingTime > 0
-    ? Math.round(actualMovingTime / count)
-    : (distPerAct > 0 ? Math.round(distPerAct * paceSec) : defaultMovingTime);
-  
+  // 1. Distribute dates across the month up to startDay
   let startDay = 24;
   if (isCurrentMonth) {
     startDay = new Date().getDate();
@@ -148,13 +223,69 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
     startDay = new Date(monthInfo.year, monthInfo.monthIndex + 1, 0).getDate();
   }
   
+  const days = [];
+  if (count >= startDay) {
+    // More workouts than days: distribute at least 1 workout per day, and place extras on random days
+    for (let i = 0; i < count; i++) {
+      if (i < startDay) {
+        days.push(startDay - i);
+      } else {
+        days.push(Math.floor(rng() * startDay) + 1);
+      }
+    }
+  } else {
+    // Fewer workouts than days: select unique days using the seeded RNG
+    const availableDays = [];
+    for (let d = 1; d <= startDay; d++) {
+      availableDays.push(d);
+    }
+    // Shuffle availableDays deterministically
+    for (let i = availableDays.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const temp = availableDays[i];
+      availableDays[i] = availableDays[j];
+      availableDays[j] = temp;
+    }
+    // Take the first `count` days
+    for (let i = 0; i < count; i++) {
+      days.push(availableDays[i]);
+    }
+  }
+  // Sort days descending
+  days.sort((a, b) => b - a);
+
+  // 2. Distribute distance and duration with variation
+  const distFactors = [];
+  let sumDistFactors = 0;
   for (let i = 0; i < count; i++) {
-    const day = Math.max(1, startDay - Math.floor(i * 1.2));
+    // Factor between 0.6 and 1.4 for running distance variance
+    const factor = 0.6 + rng() * 0.8;
+    distFactors.push(factor);
+    sumDistFactors += factor;
+  }
+  
+  const timeFactors = [];
+  let sumTimeFactors = 0;
+  for (let i = 0; i < count; i++) {
+    // Factor between 0.7 and 1.3 for duration variance
+    const factor = 0.7 + rng() * 0.6;
+    timeFactors.push(factor);
+    sumTimeFactors += factor;
+  }
+  
+  for (let i = 0; i < count; i++) {
+    const day = days[i];
+    const dist = totalDist > 0 ? (distFactors[i] / sumDistFactors) * totalDist : 0;
+    
+    const time = actualMovingTime !== undefined && actualMovingTime > 0
+      ? Math.round((timeFactors[i] / sumTimeFactors) * actualMovingTime)
+      : (dist > 0 ? Math.round(dist * paceSec) : defaultMovingTime);
+      
     list.push({
       name: `${topSport === 'Run' ? 'วิ่ง' : topSport === 'Walk' ? 'เดิน' : topSport === 'Ride' ? 'ปั่นจักรยาน' : 'ออกกำลังกาย'}ช่วงบ่าย #${count - i}`,
       sport_type: topSport || 'Run',
-      dist_km: distPerAct,
-      moving_time: timePerAct,
+      dist_km: dist,
+      moving_time: time,
       date: `${day} ${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`
     });
   }
@@ -565,6 +696,9 @@ function filterLeaderboard() {
 function getAvatarUrl(name, apiAvatar) {
   if (apiAvatar) return apiAvatar;
   
+  const mockKey = getMockKey(name);
+  if (mockKey && MOCK_AVATARS[mockKey]) return MOCK_AVATARS[mockKey];
+  
   // Clean name for mock avatars comparison
   const cleanName = name.replace(/[^\w\s\.]/g, '').trim();
   if (MOCK_AVATARS[cleanName]) return MOCK_AVATARS[cleanName];
@@ -692,10 +826,12 @@ function selectAthlete(name) {
   });
 
   const maxVal = Math.max(...dailyValues);
+  const minDenom = (activeTab === 'duration' || activeTab === 'recent') ? 1.5 : 10.0;
+  const denom = Math.max(maxVal, minDenom);
   const calendarDays = dailyValues.map((val, idx) => {
     let height = 0;
     if (val > 0) {
-      height = maxVal > 0 ? Math.round((val / maxVal) * 80) + 20 : 50;
+      height = denom > 0 ? Math.round((val / denom) * 80) + 20 : 50;
     }
     return {
       active: val > 0,
@@ -710,12 +846,13 @@ function selectAthlete(name) {
         <div class="day-track"></div>
       `;
     }
-    const icon = getSportIcon(d.sport);
+    let sportClass = d.sport ? d.sport.toLowerCase() : '';
+    if (sportClass === 'trailrun' || sportClass === 'virtualrun') {
+      sportClass = 'run';
+    }
     return `
       <div class="day-track">
-        <div class="day-bar-fill" style="height: ${d.height}%;">
-          <span class="day-bar-icon">${icon}</span>
-        </div>
+        <div class="day-bar-fill ${sportClass}" style="height: ${d.height}%;"></div>
       </div>
     `;
   }).join('');
