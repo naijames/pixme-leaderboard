@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pixme-active-v13';
+const CACHE_NAME = 'pixme-active-v15';
 const ASSETS = [
   './index.html',
   './style.css',
@@ -9,6 +9,7 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
+  self.skipWaiting(); // Force active state immediately on install
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
@@ -22,7 +23,7 @@ self.addEventListener('activate', e => {
           return caches.delete(key);
         }
       })
-    ))
+    )).then(() => self.clients.claim()) // Claim all clients immediately on activation
   );
 });
 

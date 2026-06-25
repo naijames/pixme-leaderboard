@@ -59,7 +59,7 @@ const MOCK_LOGS = {
 };
 
 // Default generic workout generator for athletes not defined in MOCK_LOGS
-function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport) {
+function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, actualMovingTime) {
   if (MOCK_LOGS[name]) return MOCK_LOGS[name];
   
   const list = [];
@@ -77,13 +77,17 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport) 
     : topSport === 'Badminton' ? 7200  // 2 hours
     : 5400; // 1.5 hours default
   
+  const timePerAct = actualMovingTime !== undefined && actualMovingTime > 0
+    ? Math.round(actualMovingTime / count)
+    : (distPerAct > 0 ? Math.round(distPerAct * paceSec) : defaultMovingTime);
+  
   for (let i = 0; i < count; i++) {
     const day = 24 - (i * 2);
     list.push({
       name: `${topSport === 'Run' ? 'วิ่ง' : topSport === 'Walk' ? 'เดิน' : topSport === 'Ride' ? 'ปั่นจักรยาน' : 'ออกกำลังกาย'}ช่วงบ่าย #${count - i}`,
       sport_type: topSport || 'Run',
       dist_km: distPerAct,
-      moving_time: distPerAct > 0 ? Math.round(distPerAct * paceSec) : defaultMovingTime,
+      moving_time: timePerAct,
       date: `${day} มิ.ย. 69`
     });
   }
@@ -286,14 +290,18 @@ function processData() {
     
     computedLeaderboard = rawActivities
       .map(a => {
-        let estimatedSeconds = 0;
-        const workouts = getWorkoutsForAthlete(a.name, a.distance, a.activities, a.topType);
-        workouts.forEach(w => { estimatedSeconds += w.moving_time; });
+        let totalSec = 0;
+        if (a.movingTime !== undefined && a.movingTime > 0) {
+          totalSec = a.movingTime;
+        } else {
+          const workouts = getWorkoutsForAthlete(a.name, a.distance, a.activities, a.topType);
+          workouts.forEach(w => { totalSec += w.moving_time; });
+        }
         
         return {
           name: a.name,
           athleteId: a.athleteId,
-          value: Math.round((estimatedSeconds / 3600) * 10) / 10, // Hours
+          value: Math.round((totalSec / 3600) * 10) / 10, // Hours
           activitiesCount: a.activities,
           topType: a.topType || 'Run',
           unit: 'ชั่วโมง'
@@ -317,7 +325,7 @@ function processData() {
     // Compile a unified feed from all athlete activities
     const feed = [];
     rawActivities.forEach(athlete => {
-      const workouts = getWorkoutsForAthlete(athlete.name, athlete.distance, athlete.activities, athlete.topType);
+      const workouts = getWorkoutsForAthlete(athlete.name, athlete.distance, athlete.activities, athlete.topType, athlete.movingTime);
       workouts.forEach(w => {
         feed.push({
           athleteName: athlete.name,
@@ -346,8 +354,12 @@ function processData() {
   
   let totalSecs = 0;
   rawActivities.forEach(a => {
-    const workouts = getWorkoutsForAthlete(a.name, a.distance, a.activities, a.topType);
-    workouts.forEach(w => { totalSecs += w.moving_time; });
+    if (a.movingTime !== undefined && a.movingTime > 0) {
+      totalSecs += a.movingTime;
+    } else {
+      const workouts = getWorkoutsForAthlete(a.name, a.distance, a.activities, a.topType);
+      workouts.forEach(w => { totalSecs += w.moving_time; });
+    }
   });
   
   document.getElementById('total-distance').textContent = totalKm.toFixed(1);
@@ -500,12 +512,16 @@ function selectAthlete(name) {
   const athleteRaw = rawActivities.find(a => a.name === name);
   if (!athleteRaw) return;
   
-  const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType);
+  const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
   const avatar = MOCK_AVATARS[name] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
   
   // Calculate total workout hours
   let totalSecs = 0;
-  workouts.forEach(w => { totalSecs += w.moving_time; });
+  if (athleteRaw.movingTime !== undefined && athleteRaw.movingTime > 0) {
+    totalSecs = athleteRaw.movingTime;
+  } else {
+    workouts.forEach(w => { totalSecs += w.moving_time; });
+  }
   const totalHours = Math.round((totalSecs / 3600) * 10) / 10;
   
   // Calculate goal progress (100Km)
