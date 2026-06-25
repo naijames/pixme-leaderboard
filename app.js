@@ -330,6 +330,7 @@ function processData() {
         feed.push({
           athleteName: athlete.name,
           athleteId: athlete.athleteId,
+          avatar: athlete.avatar || null,
           activityName: w.name,
           sportType: w.sport_type,
           distance: w.dist_km,
@@ -393,7 +394,7 @@ function renderLeaderboard() {
   if (activeTab === 'recent') {
     // Render Recent Activity Feed
     tbody.innerHTML = filtered.map(a => {
-      const avatar = MOCK_AVATARS[a.athleteName] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
+      const avatar = a.avatar || MOCK_AVATARS[a.athleteName] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
       const isDetailsActive = selectedAthleteId === a.athleteName ? 'active' : '';
       
       // Determine category and metrics
@@ -442,7 +443,7 @@ function renderLeaderboard() {
     // Render Distance or Duration Leaderboard (Without Rank Number Column)
     tbody.innerHTML = filtered.map((a, i) => {
       const metricStr = a.unit === 'km' ? `${a.value.toFixed(1)} km` : `${a.value.toFixed(1)} ชม.`;
-      const avatar = MOCK_AVATARS[a.name] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
+      const avatar = a.avatar || MOCK_AVATARS[a.name] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
       const sportIcon = getSportIcon(a.topType);
       const rowClass = selectedAthleteId === a.name ? 'active' : '';
       
@@ -513,7 +514,7 @@ function selectAthlete(name) {
   if (!athleteRaw) return;
   
   const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
-  const avatar = MOCK_AVATARS[name] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
+  const avatar = athleteRaw.avatar || MOCK_AVATARS[name] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
   
   // Calculate total workout hours
   let totalSecs = 0;
