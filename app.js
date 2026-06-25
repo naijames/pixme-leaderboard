@@ -394,7 +394,7 @@ function renderLeaderboard() {
   if (activeTab === 'recent') {
     // Render Recent Activity Feed
     tbody.innerHTML = filtered.map(a => {
-      const avatar = a.avatar || MOCK_AVATARS[a.athleteName] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
+      const avatar = getAvatarUrl(a.athleteName, a.avatar);
       const isDetailsActive = selectedAthleteId === a.athleteName ? 'active' : '';
       
       // Determine category and metrics
@@ -443,7 +443,7 @@ function renderLeaderboard() {
     // Render Distance or Duration Leaderboard (Without Rank Number Column)
     tbody.innerHTML = filtered.map((a, i) => {
       const metricStr = a.unit === 'km' ? `${a.value.toFixed(1)} km` : `${a.value.toFixed(1)} ชม.`;
-      const avatar = a.avatar || MOCK_AVATARS[a.name] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
+      const avatar = getAvatarUrl(a.name, a.avatar);
       const sportIcon = getSportIcon(a.topType);
       const rowClass = selectedAthleteId === a.name ? 'active' : '';
       
@@ -499,6 +499,20 @@ function filterLeaderboard() {
   renderLeaderboard();
 }
 
+function getAvatarUrl(name, apiAvatar) {
+  if (apiAvatar) return apiAvatar;
+  
+  // Clean name for mock avatars comparison
+  const cleanName = name.replace(/[^\w\s\.]/g, '').trim();
+  if (MOCK_AVATARS[cleanName]) return MOCK_AVATARS[cleanName];
+  if (MOCK_AVATARS[name]) return MOCK_AVATARS[name];
+  
+  // Clean emojis out of the name for Dicebear seed to get clean initials
+  const seedName = name.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '').trim();
+  
+  return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(seedName)}&radius=50`;
+}
+
 // ==========================================================================
 // Profile Details Panels (Responsive Side Panel & Bottom Sheet)
 // ==========================================================================
@@ -514,7 +528,7 @@ function selectAthlete(name) {
   if (!athleteRaw) return;
   
   const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
-  const avatar = athleteRaw.avatar || MOCK_AVATARS[name] || 'https://www.strava.com/assets/avatar/athlete/medium.png';
+  const avatar = getAvatarUrl(name, athleteRaw.avatar);
   
   // Calculate total workout hours
   let totalSecs = 0;
