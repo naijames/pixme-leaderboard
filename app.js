@@ -15,6 +15,60 @@ let isCurrentMonth = true;
 let countdown = 0;
 let timer = null;
 
+function getSelectedMonthInfo() {
+  let yr = 2026;
+  let monthIdx = 5; // 0-indexed, June
+  if (selectedMonth) {
+    const parts = selectedMonth.split('-');
+    yr = parseInt(parts[0]);
+    monthIdx = parseInt(parts[1]) - 1;
+  } else {
+    const now = new Date();
+    yr = now.getFullYear();
+    monthIdx = now.getMonth();
+  }
+  return {
+    year: yr,
+    yearThaiTwoDigits: String(yr + 543).slice(-2),
+    monthIndex: monthIdx,
+    monthThai: MONTH_TH[monthIdx]
+  };
+}
+
+function parseThaiDate(dateStr) {
+  if (!dateStr) return new Date(0);
+  const parts = dateStr.split(' ');
+  if (parts.length < 2) return new Date(0);
+  
+  const day = parseInt(parts[0]);
+  const thaiMonth = parts[1];
+  
+  const monthMap = {
+    'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3,
+    'พ.ค.': 4, 'มิ.ย.': 5, 'ก.ค.': 6, 'ส.ค.': 7,
+    'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11
+  };
+  
+  const month = monthMap[thaiMonth] !== undefined ? monthMap[thaiMonth] : 0;
+  
+  let year = 2026; // default
+  if (parts.length >= 3) {
+    const thaiYear = parts[2];
+    const yrNum = parseInt(thaiYear);
+    if (!isNaN(yrNum)) {
+      if (yrNum > 2500) {
+        year = yrNum - 543;
+      } else if (yrNum > 50 && yrNum < 100) {
+        year = yrNum + 1957; // 69 + 1957 = 2026
+      } else {
+        year = yrNum;
+      }
+    }
+  }
+  
+  return new Date(year, month, day);
+}
+
 // ==========================================================================
 // Mock Data (For local testing & fallback when live API lacks raw log details)
 // ==========================================================================
@@ -60,7 +114,13 @@ const MOCK_LOGS = {
 
 // Default generic workout generator for athletes not defined in MOCK_LOGS
 function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, actualMovingTime) {
-  if (MOCK_LOGS[name]) return MOCK_LOGS[name];
+  const monthInfo = getSelectedMonthInfo();
+  if (MOCK_LOGS[name]) {
+    return MOCK_LOGS[name].map(w => ({
+      ...w,
+      date: w.date.replace('มิ.ย. 69', `${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`)
+    }));
+  }
   
   const list = [];
   const totalDist = rawDistance || 0;
@@ -81,14 +141,21 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
     ? Math.round(actualMovingTime / count)
     : (distPerAct > 0 ? Math.round(distPerAct * paceSec) : defaultMovingTime);
   
+  let startDay = 24;
+  if (isCurrentMonth) {
+    startDay = new Date().getDate();
+  } else {
+    startDay = new Date(monthInfo.year, monthInfo.monthIndex + 1, 0).getDate();
+  }
+  
   for (let i = 0; i < count; i++) {
-    const day = 24 - (i * 2);
+    const day = Math.max(1, startDay - Math.floor(i * 1.2));
     list.push({
       name: `${topSport === 'Run' ? 'วิ่ง' : topSport === 'Walk' ? 'เดิน' : topSport === 'Ride' ? 'ปั่นจักรยาน' : 'ออกกำลังกาย'}ช่วงบ่าย #${count - i}`,
       sport_type: topSport || 'Run',
       dist_km: distPerAct,
       moving_time: timePerAct,
-      date: `${day} มิ.ย. 69`
+      date: `${day} ${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`
     });
   }
   return list;
@@ -340,12 +407,8 @@ function processData() {
       });
     });
     
-    // Sort feed by day descending (newest first)
-    feed.sort((a, b) => {
-      const dayA = parseInt(a.date.split(' ')[0]) || 0;
-      const dayB = parseInt(b.date.split(' ')[0]) || 0;
-      return dayB - dayA;
-    });
+    // Sort feed by actual date descending (newest first)
+    feed.sort((a, b) => parseThaiDate(b.date) - parseThaiDate(a.date));
     
     computedLeaderboard = feed;
   }
@@ -528,6 +591,9 @@ function selectAthlete(name) {
   if (!athleteRaw) return;
   
   const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
+  // Sort workouts by date descending
+  workouts.sort((a, b) => parseThaiDate(b.date) - parseThaiDate(a.date));
+  
   const avatar = getAvatarUrl(name, athleteRaw.avatar);
   
   // Calculate total workout hours
@@ -576,31 +642,38 @@ function selectAthlete(name) {
   `;
   
   // Calculate which weekdays have workouts for the current week and their distances/durations
-  const currentWeekDates = [];
-  const now = new Date();
-  const currentDay = now.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const weekDateStrings = [];
+  let baseDate = new Date();
+  if (!isCurrentMonth) {
+    const monthInfo = getSelectedMonthInfo();
+    // Use the last day of the selected month as the base date
+    baseDate = new Date(monthInfo.year, monthInfo.monthIndex + 1, 0);
+  }
+  const currentDay = baseDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
   const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
   
   for (let i = 0; i < 7; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() + distanceToMonday + i);
-    currentWeekDates.push(d.getDate());
+    const d = new Date(baseDate);
+    d.setDate(baseDate.getDate() + distanceToMonday + i);
+    const day = d.getDate();
+    const monthThai = MONTH_TH[d.getMonth()];
+    weekDateStrings.push(`${day} ${monthThai}`);
   }
 
   const dailyValues = [0, 0, 0, 0, 0, 0, 0];
   const dailySports = ['', '', '', '', '', '', ''];
   workouts.forEach(w => {
     const parts = w.date.split(' ');
-    if (parts.length > 0) {
-      const dayNum = parseInt(parts[0]);
-      const idx = currentWeekDates.indexOf(dayNum);
+    if (parts.length >= 2) {
+      const dateStr = `${parts[0]} ${parts[1]}`;
+      const idx = weekDateStrings.indexOf(dateStr);
       if (idx !== -1) {
         let val = 0;
-        if (activeTab === 'duration') {
-          // Duration tab: sum moving time in hours for all sports
+        if (activeTab === 'duration' || activeTab === 'recent') {
+          // Duration or Recent tab: sum moving time in hours for all sports
           val = w.moving_time / 3600;
         } else {
-          // Distance tab (or recent feed): sum distance only for Run & Walk (not Ride)
+          // Distance tab: sum distance only for Run & Walk (not Ride)
           const isRunOrWalk = ['Run', 'TrailRun', 'VirtualRun', 'Walk'].includes(w.sport_type);
           if (isRunOrWalk) {
             val = w.dist_km;
@@ -634,9 +707,7 @@ function selectAthlete(name) {
   const calendarGridHtml = calendarDays.map(d => {
     if (!d.active) {
       return `
-        <div class="day-track">
-          <div class="day-bar-fill" style="height: 0%;"></div>
-        </div>
+        <div class="day-track"></div>
       `;
     }
     const icon = getSportIcon(d.sport);
