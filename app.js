@@ -147,23 +147,26 @@ function getSeededRandom(seed) {
   };
 }
 
+function cleanAthleteName(name) {
+  if (!name) return '';
+  return name.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '') // remove emojis
+             .replace(/[\s\.\,\-\_\#\(\)\{\}\[\]\?\!\:\;\/\@]/g, '') // remove spaces and punctuation
+             .toLowerCase();
+}
+
 function getMockKey(name) {
   if (!name) return null;
   if (MOCK_LOGS[name]) return name;
   if (MOCK_AVATARS[name]) return name;
   
-  const cleanStr = (s) => s.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
-                           .replace(/[^a-zA-Z0-9]/g, '')
-                           .toLowerCase();
-                           
-  const cleanInput = cleanStr(name);
+  const cleanInput = cleanAthleteName(name);
   if (!cleanInput) return null;
   
   const allKeys = Array.from(new Set([...Object.keys(MOCK_LOGS), ...Object.keys(MOCK_AVATARS)]));
   
   // 1. First word match (length >= 3)
   const firstWordMatch = name.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
-                             .replace(/[^a-zA-Z0-9\s]/g, '')
+                             .replace(/[^\w\s\u0E00-\u0E7F]/g, '')
                              .trim()
                              .split(/\s+/)[0]
                              .toLowerCase();
@@ -178,7 +181,7 @@ function getMockKey(name) {
 
   // 2. Substring match
   for (const key of allKeys) {
-    const cleanKey = cleanStr(key);
+    const cleanKey = cleanAthleteName(key);
     if (cleanKey.includes(cleanInput) || cleanInput.includes(cleanKey)) {
       return key;
     }
@@ -210,21 +213,22 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
   const monthInfo = getSelectedMonthInfo();
   const mockKey = getMockKey(name);
   if (mockKey && MOCK_LOGS[mockKey]) {
-    return MOCK_LOGS[mockKey].map(w => ({
-      ...w,
-      date: w.date.replace('มิ.ย. 69', `${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`)
-    }));
+    return MOCK_LOGS[mockKey].map(w => {
+      const formattedDate = w.date.replace('มิ.ย. 69', `${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`);
+      return {
+        ...w,
+        date: formattedDate,
+        first_seen: parseThaiDate(formattedDate).getTime() / 1000
+      };
+    });
   }
   
   if (rawWorkoutLogs && rawWorkoutLogs.length > 0) {
-    const cleanStr = (s) => s.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
-                             .replace(/[^a-zA-Z0-9]/g, '')
-                             .toLowerCase();
-    const cleanTarget = cleanStr(name);
+    const cleanTarget = cleanAthleteName(name);
     
     const matched = rawWorkoutLogs.filter(w => {
       if (!w.athleteName) return false;
-      const cleanName = cleanStr(w.athleteName);
+      const cleanName = cleanAthleteName(w.athleteName);
       return cleanName === cleanTarget || cleanName.includes(cleanTarget) || cleanTarget.includes(cleanName);
     });
     
@@ -234,7 +238,8 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
         sport_type: w.sport_type || topSport || 'Run',
         dist_km: parseFloat(w.dist_km) || 0,
         moving_time: parseInt(w.moving_time) || 0,
-        date: w.date
+        date: w.date,
+        first_seen: w.first_seen || 0
       }));
     }
   }
@@ -316,12 +321,14 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
       ? Math.round((timeFactors[i] / sumTimeFactors) * actualMovingTime)
       : (dist > 0 ? Math.round(dist * paceSec) : defaultMovingTime);
       
+    const dateStr = `${day} ${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`;
     list.push({
       name: `${topSport === 'Run' ? 'วิ่ง' : topSport === 'Walk' ? 'เดิน' : topSport === 'Ride' ? 'ปั่นจักรยาน' : 'ออกกำลังกาย'}ช่วงบ่าย #${count - i}`,
       sport_type: topSport || 'Run',
       dist_km: dist,
       moving_time: time,
-      date: `${day} ${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`
+      date: dateStr,
+      first_seen: parseThaiDate(dateStr).getTime() / 1000
     });
   }
   return list;
@@ -569,13 +576,19 @@ function processData() {
           sportType: w.sport_type,
           distance: w.dist_km,
           duration: w.moving_time,
-          date: w.date
+          date: w.date,
+          first_seen: w.first_seen || 0
         });
       });
     });
     
-    // Sort feed by actual date descending (newest first)
-    feed.sort((a, b) => parseThaiDate(b.date) - parseThaiDate(a.date));
+    // Sort feed by first_seen descending, fallback to date descending
+    feed.sort((a, b) => {
+      if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) {
+        return b.first_seen - a.first_seen;
+      }
+      return parseThaiDate(b.date) - parseThaiDate(a.date);
+    });
     
     computedLeaderboard = feed;
   }
@@ -761,8 +774,13 @@ function selectAthlete(name) {
   if (!athleteRaw) return;
   
   const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
-  // Sort workouts by date descending
-  workouts.sort((a, b) => parseThaiDate(b.date) - parseThaiDate(a.date));
+  // Sort workouts by first_seen descending, fallback to date descending
+  workouts.sort((a, b) => {
+    if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) {
+      return b.first_seen - a.first_seen;
+    }
+    return parseThaiDate(b.date) - parseThaiDate(a.date);
+  });
   
   const avatar = getAvatarUrl(name, athleteRaw.avatar);
   
