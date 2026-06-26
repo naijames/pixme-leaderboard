@@ -190,13 +190,18 @@ function getMockKey(name) {
   // 3. Word-based match
   for (const key of allKeys) {
     const inputWords = name.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
+                           .replace(/[^\w\s\u0E00-\u0E7F]/g, '') // remove punctuation
                            .toLowerCase()
                            .split(/\s+/)
                            .filter(w => w.length > 0);
-    const keyWords = key.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+    const keyWords = key.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
+                        .replace(/[^\w\s\u0E00-\u0E7F]/g, '') // remove punctuation
+                        .toLowerCase()
+                        .split(/\s+/)
+                        .filter(w => w.length > 0);
     
     for (const iw of inputWords) {
-      if (iw.length < 2) continue; // skip single letters
+      if (iw.length < 2) continue; // skip single letters (e.g. j)
       for (const kw of keyWords) {
         if (kw.length < 2) continue;
         if (kw.startsWith(iw) || iw.startsWith(kw)) {
@@ -801,13 +806,11 @@ function filterLeaderboard() {
 function getAvatarUrl(name, apiAvatar) {
   if (apiAvatar) return apiAvatar;
   
-  const mockKey = getMockKey(name);
-  if (mockKey && MOCK_AVATARS[mockKey]) return MOCK_AVATARS[mockKey];
+  if (MOCK_AVATARS[name]) return MOCK_AVATARS[name];
   
   // Clean name for mock avatars comparison
   const cleanName = name.replace(/[^\w\s\.]/g, '').trim();
   if (MOCK_AVATARS[cleanName]) return MOCK_AVATARS[cleanName];
-  if (MOCK_AVATARS[name]) return MOCK_AVATARS[name];
   
   // Clean emojis out of the name for Dicebear seed to get clean initials
   const seedName = name.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '').trim();
