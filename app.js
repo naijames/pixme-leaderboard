@@ -6,7 +6,8 @@ const PROXY = 'https://script.google.com/macros/s/AKfycbzrJYV8Ab81xQsu9KQHC7ifGx
 const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
 // State
-let rawActivities = [];        // Raw activity logs (if API supports it, otherwise mocked)
+let rawActivities = [];        // Athlete stats list (from res.data)
+let rawWorkoutLogs = [];       // Real individual workout logs (from res.activities)
 let computedLeaderboard = [];  // Computed stats per athlete for the active tab
 let activeTab = 'distance';    // 'distance' or 'duration'
 let selectedAthleteId = null;  // Currently open athlete ID/Name for detail panel
@@ -80,7 +81,8 @@ const MOCK_AVATARS = {
   'Seth il': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
   'Lilm Jackson': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
   'Marc ii': 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150',
-  'Bntə Key': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150'
+  'Bntə Key': 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150',
+  'Mooh Ratchaburi': 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150'
 };
 
 const MOCK_LOGS = {
@@ -109,6 +111,21 @@ const MOCK_LOGS = {
     { name: 'Evening Stretch 🧘', sport_type: 'Yoga', dist_km: 0, moving_time: 3600, date: '23 มิ.ย. 69' },
     { name: 'Recovery Jog 🏃', sport_type: 'Run', dist_km: 5.1, moving_time: 1980, date: '21 มิ.ย. 69' },
     { name: 'Morning Yoga Flow', sport_type: 'Yoga', dist_km: 0, moving_time: 4800, date: '18 มิ.ย. 69' }
+  ],
+  'Mooh Ratchaburi': [
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 6.50, moving_time: 3598, date: '24 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 10.00, moving_time: 6060, date: '23 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 5.20, moving_time: 2881, date: '22 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 6.20, moving_time: 3460, date: '20 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 6.50, moving_time: 3600, date: '19 มิ.ย. 69' },
+    { name: 'วิ่งช่วงบ่าย (Afternoon Run)', sport_type: 'Run', dist_km: 5.00, moving_time: 2800, date: '17 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 7.00, moving_time: 3900, date: '15 มิ.ย. 69' },
+    { name: 'วิ่งช่วงบ่าย (Afternoon Run)', sport_type: 'Run', dist_km: 6.00, moving_time: 3300, date: '13 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 6.50, moving_time: 3600, date: '11 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 5.80, moving_time: 3200, date: '9 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 6.00, moving_time: 3400, date: '7 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 6.50, moving_time: 3600, date: '5 มิ.ย. 69' },
+    { name: 'วิ่งช่วงเย็น (Evening Run)', sport_type: 'Run', dist_km: 6.50, moving_time: 3761, date: '3 มิ.ย. 69' }
   ]
 };
 
@@ -199,6 +216,29 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
     }));
   }
   
+  if (rawWorkoutLogs && rawWorkoutLogs.length > 0) {
+    const cleanStr = (s) => s.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDC00-\uDFFF]/g, '')
+                             .replace(/[^a-zA-Z0-9]/g, '')
+                             .toLowerCase();
+    const cleanTarget = cleanStr(name);
+    
+    const matched = rawWorkoutLogs.filter(w => {
+      if (!w.athleteName) return false;
+      const cleanName = cleanStr(w.athleteName);
+      return cleanName === cleanTarget || cleanName.includes(cleanTarget) || cleanTarget.includes(cleanName);
+    });
+    
+    if (matched.length > 0) {
+      return matched.map(w => ({
+        name: w.name || `${topSport === 'Run' ? 'วิ่ง' : topSport === 'Walk' ? 'เดิน' : topSport === 'Ride' ? 'ปั่นจักรยาน' : 'ออกกำลังกาย'}ช่วงบ่าย`,
+        sport_type: w.sport_type || topSport || 'Run',
+        dist_km: parseFloat(w.dist_km) || 0,
+        moving_time: parseInt(w.moving_time) || 0,
+        date: w.date
+      }));
+    }
+  }
+
   const list = [];
   const totalDist = rawDistance || 0;
   const count = rawActivitiesCount || 1; // Default to 1 if no activities count
@@ -234,21 +274,16 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
       }
     }
   } else {
-    // Fewer workouts than days: select unique days using the seeded RNG
-    const availableDays = [];
-    for (let d = 1; d <= startDay; d++) {
-      availableDays.push(d);
-    }
-    // Shuffle availableDays deterministically
-    for (let i = availableDays.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      const temp = availableDays[i];
-      availableDays[i] = availableDays[j];
-      availableDays[j] = temp;
-    }
-    // Take the first `count` days
+    // Fewer workouts than days: count backward with realistic steps (1-3 days depending on count)
+    const avgStep = Math.max(1, Math.min(6, 30 / count));
+    let currentDay = startDay;
     for (let i = 0; i < count; i++) {
-      days.push(availableDays[i]);
+      days.push(currentDay);
+      const step = Math.max(1, Math.round(avgStep * (0.6 + rng() * 0.8)));
+      currentDay -= step;
+      if (currentDay < 1) {
+        currentDay = 1 + Math.floor(rng() * 3); // reset to a random small day if we hit the bottom
+      }
     }
   }
   // Sort days descending
@@ -403,6 +438,7 @@ function loadData() {
       
       // Store raw payload (in old API this is the pre-compiled athlete list)
       rawActivities = res.data || [];
+      rawWorkoutLogs = res.activities || [];
       
       // Process and render leaderboard
       processData();
