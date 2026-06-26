@@ -211,17 +211,6 @@ function getMockKey(name) {
 // Default generic workout generator for athletes not defined in MOCK_LOGS
 function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, actualMovingTime) {
   const monthInfo = getSelectedMonthInfo();
-  const mockKey = getMockKey(name);
-  if (mockKey && MOCK_LOGS[mockKey]) {
-    return MOCK_LOGS[mockKey].map(w => {
-      const formattedDate = w.date.replace('มิ.ย. 69', `${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`);
-      return {
-        ...w,
-        date: formattedDate,
-        first_seen: parseThaiDate(formattedDate).getTime() / 1000
-      };
-    });
-  }
   
   if (rawWorkoutLogs && rawWorkoutLogs.length > 0) {
     const cleanTarget = cleanAthleteName(name);
@@ -233,15 +222,41 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
     });
     
     if (matched.length > 0) {
-      return matched.map(w => ({
-        name: w.name || `${topSport === 'Run' ? 'วิ่ง' : topSport === 'Walk' ? 'เดิน' : topSport === 'Ride' ? 'ปั่นจักรยาน' : 'ออกกำลังกาย'}ช่วงบ่าย`,
-        sport_type: w.sport_type || topSport || 'Run',
-        dist_km: parseFloat(w.dist_km) || 0,
-        moving_time: parseInt(w.moving_time) || 0,
-        date: w.date,
-        first_seen: w.first_seen || 0
-      }));
+      return matched.map(w => {
+        const originalIndex = rawWorkoutLogs.indexOf(w);
+        let formattedDate = w.date;
+        if (w.first_seen) {
+          const d = new Date(w.first_seen * 1000);
+          const day = d.getDate();
+          const monthThai = MONTH_TH[d.getMonth()];
+          const yearThaiTwoDigits = String(d.getFullYear() + 543).slice(-2);
+          formattedDate = `${day} ${monthThai} ${yearThaiTwoDigits}`;
+        }
+        return {
+          name: w.name || `${topSport === 'Run' ? 'วิ่ง' : topSport === 'Walk' ? 'เดิน' : topSport === 'Ride' ? 'ปั่นจักรยาน' : 'ออกกำลังกาย'}ช่วงบ่าย`,
+          sport_type: w.sport_type || topSport || 'Run',
+          dist_km: parseFloat(w.dist_km) || 0,
+          moving_time: parseInt(w.moving_time) || 0,
+          date: formattedDate,
+          first_seen: w.first_seen || 0,
+          sheetIndex: originalIndex >= 0 ? originalIndex : 0
+        };
+      });
     }
+  }
+
+  // Fallback to MOCK_LOGS if rawWorkoutLogs is empty or has no match
+  const mockKey = getMockKey(name);
+  if (mockKey && MOCK_LOGS[mockKey]) {
+    return MOCK_LOGS[mockKey].map((w, index) => {
+      const formattedDate = w.date.replace('มิ.ย. 69', `${monthInfo.monthThai} ${monthInfo.yearThaiTwoDigits}`);
+      return {
+        ...w,
+        date: formattedDate,
+        first_seen: parseThaiDate(formattedDate).getTime() / 1000,
+        sheetIndex: index
+      };
+    });
   }
 
   const list = [];
@@ -328,7 +343,8 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
       dist_km: dist,
       moving_time: time,
       date: dateStr,
-      first_seen: parseThaiDate(dateStr).getTime() / 1000
+      first_seen: parseThaiDate(dateStr).getTime() / 1000,
+      sheetIndex: i
     });
   }
   return list;
@@ -565,30 +581,70 @@ function processData() {
     
     // Compile a unified feed from all athlete activities
     const feed = [];
-    rawActivities.forEach(athlete => {
-      const workouts = getWorkoutsForAthlete(athlete.name, athlete.distance, athlete.activities, athlete.topType, athlete.movingTime);
-      workouts.forEach(w => {
+    
+    if (rawWorkoutLogs && rawWorkoutLogs.length > 0) {
+      // Compile directly from sheet rawWorkoutLogs (real logs)
+      rawWorkoutLogs.forEach((w, index) => {
+        const athlete = rawActivities.find(a => cleanAthleteName(a.name) === cleanAthleteName(w.athleteName));
+        
+        let formattedDate = w.date;
+        if (w.first_seen) {
+          const d = new Date(w.first_seen * 1000);
+          const day = d.getDate();
+          const monthThai = MONTH_TH[d.getMonth()];
+          const yearThaiTwoDigits = String(d.getFullYear() + 543).slice(-2);
+          formattedDate = `${day} ${monthThai} ${yearThaiTwoDigits}`;
+        }
+        
         feed.push({
-          athleteName: athlete.name,
-          athleteId: athlete.athleteId,
-          avatar: athlete.avatar || null,
+          athleteName: w.athleteName,
+          athleteId: athlete ? athlete.athleteId : (w.athleteId || null),
+          avatar: athlete ? athlete.avatar : null,
           activityName: w.name,
           sportType: w.sport_type,
           distance: w.dist_km,
           duration: w.moving_time,
-          date: w.date,
-          first_seen: w.first_seen || 0
+          date: formattedDate,
+          first_seen: w.first_seen || 0,
+          sheetIndex: index
         });
       });
-    });
-    
-    // Sort feed by first_seen descending, fallback to date descending
-    feed.sort((a, b) => {
-      if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) {
-        return b.first_seen - a.first_seen;
-      }
-      return parseThaiDate(b.date) - parseThaiDate(a.date);
-    });
+      
+      // Sort feed by first_seen descending, fallback to sheetIndex ascending (smaller index first = newer in batch)
+      feed.sort((a, b) => {
+        if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) {
+          return b.first_seen - a.first_seen;
+        }
+        return a.sheetIndex - b.sheetIndex;
+      });
+    } else {
+      // Fallback: Compile from rawActivities (simulated/mock)
+      rawActivities.forEach(athlete => {
+        const workouts = getWorkoutsForAthlete(athlete.name, athlete.distance, athlete.activities, athlete.topType, athlete.movingTime);
+        workouts.forEach(w => {
+          feed.push({
+            athleteName: athlete.name,
+            athleteId: athlete.athleteId,
+            avatar: athlete.avatar || null,
+            activityName: w.name,
+            sportType: w.sport_type,
+            distance: w.dist_km,
+            duration: w.moving_time,
+            date: w.date,
+            first_seen: w.first_seen || 0,
+            sheetIndex: 0
+          });
+        });
+      });
+      
+      // Sort fallback feed by first_seen descending, fallback to date descending
+      feed.sort((a, b) => {
+        if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) {
+          return b.first_seen - a.first_seen;
+        }
+        return parseThaiDate(b.date) - parseThaiDate(a.date);
+      });
+    }
     
     computedLeaderboard = feed;
   }
@@ -774,10 +830,12 @@ function selectAthlete(name) {
   if (!athleteRaw) return;
   
   const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
-  // Sort workouts by first_seen descending, fallback to date descending
   workouts.sort((a, b) => {
     if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) {
       return b.first_seen - a.first_seen;
+    }
+    if (a.sheetIndex !== undefined && b.sheetIndex !== undefined && a.sheetIndex !== b.sheetIndex) {
+      return a.sheetIndex - b.sheetIndex; // smaller index (earlier in sheet = newer in batch) comes first
     }
     return parseThaiDate(b.date) - parseThaiDate(a.date);
   });
