@@ -540,13 +540,13 @@ function processData() {
       .sort((a, b) => b.value - a.value);
       
   } else if (activeTab === 'duration') {
-    document.getElementById('board-title').textContent = 'บอร์ดเวลารวมขยับตัว (ชั่วโมง)';
+    document.getElementById('board-title').textContent = 'บอร์ดเวลารวมขยับตัว (ชั่วโมง-นาที)';
     document.getElementById('active-sport-pill').textContent = 'ทุกประเภทกิจกรรม';
     
     // Set headers for duration board
     theadRow.innerHTML = `
       <th>สมาชิก</th>
-      <th class="r">ชั่วโมงสะสม</th>
+      <th class="r">เวลารวมสะสม</th>
       <th class="c" style="width: 100px">กิจกรรม</th>
     `;
     
@@ -563,7 +563,7 @@ function processData() {
         return {
           name: a.name,
           athleteId: a.athleteId,
-          value: Math.round((totalSec / 3600) * 10) / 10, // Hours
+          value: totalSec, // Raw seconds for formatting
           activitiesCount: a.activities,
           topType: a.topType || 'Run',
           unit: 'ชั่วโมง'
@@ -746,7 +746,7 @@ function renderLeaderboard() {
   } else {
     // Render Distance or Duration Leaderboard (Without Rank Number Column)
     tbody.innerHTML = filtered.map((a, i) => {
-      const metricStr = a.unit === 'km' ? `${a.value.toFixed(1)} km` : `${a.value.toFixed(1)} ชม.`;
+      const metricStr = a.unit === 'km' ? `${a.value.toFixed(1)} km` : formatDuration(a.value);
       const avatar = getAvatarUrl(a.name, a.avatar);
       const sportIcon = getSportIcon(a.topType);
       const rowClass = selectedAthleteId === a.name ? 'active' : '';
@@ -1026,7 +1026,7 @@ function selectAthlete(name) {
       </div>
       <div class="detail-stat-box">
         <p class="lbl">เวลาซ้อมรวม</p>
-        <p class="val">${totalHours} <span style="font-size:0.75rem">ชม.</span></p>
+        <p class="val" style="font-size:1.15rem; white-space: nowrap;">${formatDuration(totalSecs)}</p>
       </div>
     </div>
     
@@ -1075,8 +1075,8 @@ function closeMobileSheet() {
 function formatDuration(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h} ชม. ${m} นาที`;
-  return `${m} นาที`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 // Close bottom sheet if window resized to desktop
