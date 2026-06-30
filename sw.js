@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pixme-active-v29';
+const CACHE_NAME = 'pixme-active-v30';
 const ASSETS = [
   './index.html',
   './style.css',

@@ -890,23 +890,25 @@ function selectAthlete(name) {
     </div>
   `;
   
-  // Calculate which weekdays have workouts for the current week and their distances/durations
+  // Calculate which weekdays have workouts for the rolling 7 days (Today is on the far right)
   const weekDateStrings = [];
+  const weekdayLabels = [];
   let baseDate = new Date();
   if (!isCurrentMonth) {
     const monthInfo = getSelectedMonthInfo();
     // Use the last day of the selected month as the base date
     baseDate = new Date(monthInfo.year, monthInfo.monthIndex + 1, 0);
   }
-  const currentDay = baseDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+  
+  const DAY_LABELS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
   
   for (let i = 0; i < 7; i++) {
     const d = new Date(baseDate);
-    d.setDate(baseDate.getDate() + distanceToMonday + i);
+    d.setDate(baseDate.getDate() - 6 + i);
     const day = d.getDate();
     const monthThai = MONTH_TH[d.getMonth()];
     weekDateStrings.push(`${day} ${monthThai}`);
+    weekdayLabels.push(DAY_LABELS[d.getDay()]);
   }
 
   const dailyValues = [0, 0, 0, 0, 0, 0, 0];
@@ -974,12 +976,12 @@ function selectAthlete(name) {
 
   const calendarHtml = `
     <div class="calendar-section">
-      <p class="section-title">ปฏิทินสัปดาห์นี้</p>
+      <p class="section-title">7 วันล่าสุด</p>
       <div class="calendar-grid">
         ${calendarGridHtml}
       </div>
       <div class="calendar-labels-row">
-        <span>จ</span><span>อ</span><span>พ</span><span>พฤ</span><span>ศ</span><span>ส</span><span>อา</span>
+        ${weekdayLabels.map(lbl => `<span>${lbl}</span>`).join('')}
       </div>
     </div>
   `;
