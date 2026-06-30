@@ -8,6 +8,7 @@ const MONTH_TH = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','
 // State
 let rawActivities = [];        // Athlete stats list (from res.data)
 let rawWorkoutLogs = [];       // Real individual workout logs (from res.activities)
+let currentMonthWorkoutLogs = []; // Stores real-time workouts from initial/current month load
 let computedLeaderboard = [];  // Computed stats per athlete for the active tab
 let activeTab = 'distance';    // 'distance' or 'duration'
 let selectedAthleteId = null;  // Currently open athlete ID/Name for detail panel
@@ -214,13 +215,14 @@ function getMockKey(name) {
 }
 
 // Default generic workout generator for athletes not defined in MOCK_LOGS
-function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, actualMovingTime) {
+function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, actualMovingTime, customWorkoutLogs) {
   const monthInfo = getSelectedMonthInfo();
+  const logsToUse = customWorkoutLogs || rawWorkoutLogs;
   
-  if (rawWorkoutLogs && rawWorkoutLogs.length > 0) {
+  if (logsToUse && logsToUse.length > 0) {
     const cleanTarget = cleanAthleteName(name);
     
-    const matched = rawWorkoutLogs.filter(w => {
+    const matched = logsToUse.filter(w => {
       if (!w.athleteName) return false;
       const cleanName = cleanAthleteName(w.athleteName);
       return cleanName === cleanTarget || cleanName.includes(cleanTarget) || cleanTarget.includes(cleanName);
@@ -228,7 +230,7 @@ function getWorkoutsForAthlete(name, rawDistance, rawActivitiesCount, topSport, 
     
     if (matched.length > 0) {
       return matched.map(w => {
-        const originalIndex = rawWorkoutLogs.indexOf(w);
+        const originalIndex = logsToUse.indexOf(w);
         let formattedDate = w.date;
         if (w.first_seen) {
           const d = new Date(w.first_seen * 1000);
@@ -364,6 +366,14 @@ function formatMonth(m) {
   return MONTH_TH[parseInt(parts[1])-1] + ' ' + (parseInt(parts[0])+543);
 }
 
+function formatMonthShort(m) {
+  if (!m) return 'ปัจจุบัน';
+  const parts = m.split('-');
+  if (parts.length < 2) return m;
+  const shortYear = String(parseInt(parts[0]) + 543).slice(-2);
+  return MONTH_TH[parseInt(parts[1])-1] + ' ' + shortYear;
+}
+
 function translateDateToEn(thaiDateStr) {
   if (!thaiDateStr) return '';
   const parts = thaiDateStr.split(' ');
@@ -467,6 +477,10 @@ function loadData() {
       // Store raw payload (in old API this is the pre-compiled athlete list)
       rawActivities = res.data || [];
       rawWorkoutLogs = res.activities || [];
+      
+      if (res.isCurrent) {
+        currentMonthWorkoutLogs = res.activities || [];
+      }
       
       // Process and render leaderboard
       processData();
@@ -832,8 +846,20 @@ function selectAthlete(name) {
   const athleteRaw = rawActivities.find(a => a.name === name);
   if (!athleteRaw) return;
   
-  const workouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
-  workouts.sort((a, b) => {
+  // Selected month's workouts (for stats computing)
+  const selectedMonthWorkouts = getWorkoutsForAthlete(name, athleteRaw.distance, athleteRaw.activities, athleteRaw.topType, athleteRaw.movingTime);
+  
+  // Rolling workouts (for current 7 days rolling calendar and recent activities)
+  const rollingWorkouts = getWorkoutsForAthlete(
+    name, 
+    athleteRaw.distance, 
+    athleteRaw.activities, 
+    athleteRaw.topType, 
+    athleteRaw.movingTime, 
+    (currentMonthWorkoutLogs && currentMonthWorkoutLogs.length > 0) ? currentMonthWorkoutLogs : rawWorkoutLogs
+  );
+  
+  rollingWorkouts.sort((a, b) => {
     if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) {
       return b.first_seen - a.first_seen;
     }
@@ -850,7 +876,7 @@ function selectAthlete(name) {
   if (athleteRaw.movingTime !== undefined && athleteRaw.movingTime > 0) {
     totalSecs = athleteRaw.movingTime;
   } else {
-    workouts.forEach(w => { totalSecs += w.moving_time; });
+    selectedMonthWorkouts.forEach(w => { totalSecs += w.moving_time; });
   }
   const totalHours = Math.round((totalSecs / 3600) * 10) / 10;
   
@@ -878,7 +904,7 @@ function selectAthlete(name) {
   const progressBarHtml = `
     <div class="goal-progress-container" style="margin: 0.5rem 0 1.25rem 0; padding: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);">
       <div style="display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 6px; font-weight: 600;">
-        <span style="color: var(--text-secondary);">MONTHLY TARGET (100K)</span>
+        <span style="color: var(--text-secondary);">TARGET (${formatMonthShort(selectedMonth)}) - 100K</span>
         <span style="color: ${progressColor};">${((distVal / 100) * 100).toFixed(0)}%</span>
       </div>
       <div style="height: 8px; width: 100%; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; position: relative;">
@@ -893,12 +919,7 @@ function selectAthlete(name) {
   // Calculate which weekdays have workouts for the rolling 7 days (Today is on the far right)
   const weekDateStrings = [];
   const weekdayLabels = [];
-  let baseDate = new Date();
-  if (!isCurrentMonth) {
-    const monthInfo = getSelectedMonthInfo();
-    // Use the last day of the selected month as the base date
-    baseDate = new Date(monthInfo.year, monthInfo.monthIndex + 1, 0);
-  }
+  let baseDate = new Date(); // Always use today's date for rolling 7-day calendar
   
   const DAY_LABELS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
   
@@ -930,7 +951,7 @@ function selectAthlete(name) {
 
   const dailyValues = [0, 0, 0, 0, 0, 0, 0];
   const dailySports = ['', '', '', '', '', '', ''];
-  workouts.forEach(w => {
+  rollingWorkouts.forEach(w => {
     const parts = w.date.split(' ');
     if (parts.length >= 2) {
       const dateStr = `${parts[0]} ${parts[1]}`;
@@ -1004,7 +1025,7 @@ function selectAthlete(name) {
   `;
 
   // Render recent workouts list
-  const workoutsHtml = workouts.map(w => {
+  const workoutsHtml = rollingWorkouts.map(w => {
     const icon = getSportIcon(w.sport_type);
     const timeStr = formatDuration(w.moving_time);
     const detailStr = w.sport_type === 'Run' || w.sport_type === 'Walk' || w.sport_type === 'Ride'
@@ -1040,11 +1061,11 @@ function selectAthlete(name) {
     
     <div class="detail-stats-grid">
       <div class="detail-stat-box">
-        <p class="lbl">วิ่งสะสม</p>
+        <p class="lbl">วิ่งสะสม (${formatMonthShort(selectedMonth)})</p>
         <p class="val">${athleteRaw.distance.toFixed(1)} <span style="font-size:0.75rem">km</span></p>
       </div>
       <div class="detail-stat-box">
-        <p class="lbl">เวลาซ้อมรวม</p>
+        <p class="lbl">เวลาซ้อมรวม (${formatMonthShort(selectedMonth)})</p>
         <p class="val" style="font-size:1.15rem; white-space: nowrap;">${formatDuration(totalSecs)}</p>
       </div>
     </div>
@@ -1052,7 +1073,7 @@ function selectAthlete(name) {
     ${calendarHtml}
     
     <div class="workout-section">
-      <p class="section-title">บันทึกกิจกรรมล่าสุด (${workouts.length} ครั้ง)</p>
+      <p class="section-title">บันทึกกิจกรรมล่าสุด (${rollingWorkouts.length} ครั้ง)</p>
       <div class="workout-list">
         ${workoutsHtml}
       </div>
