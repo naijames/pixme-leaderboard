@@ -908,7 +908,24 @@ function selectAthlete(name) {
     const day = d.getDate();
     const monthThai = MONTH_TH[d.getMonth()];
     weekDateStrings.push(`${day} ${monthThai}`);
-    weekdayLabels.push(DAY_LABELS[d.getDay()]);
+    
+    const dayLabel = DAY_LABELS[d.getDay()];
+    
+    if (i === 6) {
+      weekdayLabels.push(`
+        <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
+          <span style="font-weight: 700; color: #FC4C02; font-size: 0.65rem;">${dayLabel}</span>
+          <span style="font-weight: 700; color: #FC4C02; font-size: 0.58rem; letter-spacing: -0.02em; margin-top: 1px;">Today</span>
+        </div>
+      `);
+    } else {
+      weekdayLabels.push(`
+        <div style="display: flex; flex-direction: column; align-items: center; line-height: 1.1;">
+          <span style="font-weight: 500; color: var(--text-secondary); font-size: 0.65rem;">${dayLabel}</span>
+          <span style="font-weight: 400; color: var(--text-muted); font-size: 0.65rem; margin-top: 1px;">${day}</span>
+        </div>
+      `);
+    }
   }
 
   const dailyValues = [0, 0, 0, 0, 0, 0, 0];
@@ -981,7 +998,7 @@ function selectAthlete(name) {
         ${calendarGridHtml}
       </div>
       <div class="calendar-labels-row">
-        ${weekdayLabels.map(lbl => `<span>${lbl}</span>`).join('')}
+        ${weekdayLabels.join('')}
       </div>
     </div>
   `;
