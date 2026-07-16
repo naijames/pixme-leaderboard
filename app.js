@@ -1206,11 +1206,18 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
           <div id="canvas-loading" class="canvas-loader hidden">กำลังประมวลผล...</div>
         </div>
         
-        <div class="share-controls">
+        <div class="share-controls" style="display: flex; flex-direction: column; align-items: center; width: 100%; gap: 10px;">
           <label class="custom-file-upload">
             <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" />
             <span>📸 เลือกรูปภาพประกอบ</span>
           </label>
+          
+          <div class="share-slider-container hidden" id="photo-slider-wrapper" style="width: 100%; margin-top: 10px; text-align: center;">
+            <label for="share-photo-slider" style="display: block; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
+              ↔️ เลื่อนปรับตำแหน่งรูปภาพ (ซ้าย-ขวา / บน-ล่าง)
+            </label>
+            <input type="range" id="share-photo-slider" min="0" max="100" value="50" style="width: 100%; accent-color: var(--color-orange); cursor: pointer;" oninput="handleSharePhotoSliderInput(event)" />
+          </div>
         </div>
       </div>
       <div class="share-modal-footer">
@@ -1232,7 +1239,8 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
     distanceKm: distanceKm,
     movingTimeSec: movingTimeSec,
     sportType: sportType,
-    bgImage: null
+    bgImage: null,
+    sliderValue: 50
   };
   
   // Initial draw with default gradient
@@ -1258,12 +1266,33 @@ function handleSharePhotoUpload(event) {
     const img = new Image();
     img.onload = function() {
       window.currentShareData.bgImage = img;
+      window.currentShareData.sliderValue = 50;
+      
+      // Show slider if image is not square
+      const sliderWrapper = document.getElementById('photo-slider-wrapper');
+      if (sliderWrapper) {
+        if (img.width !== img.height) {
+          sliderWrapper.classList.remove('hidden');
+          const slider = document.getElementById('share-photo-slider');
+          if (slider) slider.value = 50;
+        } else {
+          sliderWrapper.classList.add('hidden');
+        }
+      }
+      
       refreshShareCanvas();
       if (loading) loading.classList.add('hidden');
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function handleSharePhotoSliderInput(event) {
+  if (window.currentShareData) {
+    window.currentShareData.sliderValue = parseInt(event.target.value);
+    refreshShareCanvas();
+  }
 }
 
 function refreshShareCanvas() {
@@ -1286,10 +1315,21 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
   
   // 1. Draw Background
   if (bgImage) {
-    // Crop image to square (center crop)
     const imgSize = Math.min(bgImage.width, bgImage.height);
-    const sx = (bgImage.width - imgSize) / 2;
-    const sy = (bgImage.height - imgSize) / 2;
+    const sliderVal = window.currentShareData && window.currentShareData.sliderValue !== undefined ? window.currentShareData.sliderValue : 50;
+    
+    let sx = 0;
+    let sy = 0;
+    
+    if (bgImage.width > bgImage.height) {
+      // Landscape: Slide horizontally
+      const maxOffset = bgImage.width - bgImage.height;
+      sx = maxOffset * (sliderVal / 100);
+    } else if (bgImage.height > bgImage.width) {
+      // Portrait: Slide vertically
+      const maxOffset = bgImage.height - bgImage.width;
+      sy = maxOffset * (sliderVal / 100);
+    }
     ctx.drawImage(bgImage, sx, sy, imgSize, imgSize, 0, 0, size, size);
   } else {
     // Draw beautiful Sunset to Charcoal gradient
@@ -1334,11 +1374,11 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
   ctx.font = 'bold 40px ' + fontSans;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('PIXME ACTIVE', 60, 60);
+  ctx.fillText('Pixme Run Club', 60, 60);
   
-  ctx.fillStyle = '#FC4C02';
+  ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 22px ' + fontSans;
-  ctx.fillText('RUN & WALK CLUB', 60, 110);
+  ctx.fillText('Shut up !!! ,,, and Run …,,,', 60, 110);
   
   // Right: Athlete Profile Name
   ctx.fillStyle = '#FFFFFF';
