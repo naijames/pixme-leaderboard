@@ -1506,3 +1506,224 @@ body::-webkit-scrollbar {
     font-size: 1.2rem;
   }
 }
+
+/* ==========================================================================
+   Activity Share Overlay Modal
+   ========================================================================== */
+.workout-share-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.workout-share-btn:hover {
+  background: var(--color-orange);
+  border-color: var(--color-orange);
+  color: white;
+  box-shadow: 0 0 8px rgba(252, 76, 2, 0.4);
+}
+
+.share-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.share-modal.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.share-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+}
+
+.share-modal-content {
+  position: relative;
+  background: #121620;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  width: 90%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  z-index: 2001;
+  overflow: hidden;
+  max-height: 95vh;
+}
+
+.share-modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.share-modal-header h4 {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.share-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.share-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.canvas-preview-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  background: #1a1e2b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.canvas-loader {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.share-controls {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.custom-file-upload {
+  background: rgba(252, 76, 2, 0.15);
+  border: 1px dashed var(--color-orange);
+  color: var(--color-orange);
+  padding: 10px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-file-upload:hover {
+  background: var(--color-orange);
+  color: white;
+  border-style: solid;
+}
+
+.custom-file-upload input[type="file"] {
+  display: none;
+}
+
+.share-modal-footer {
+  padding: 16px 20px 24px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.share-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 30px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-base);
+}
+
+.download-btn {
+  background: var(--color-orange);
+  color: #fff;
+}
+
+.download-btn:hover {
+  background: #e04400;
+  box-shadow: 0 4px 12px rgba(252, 76, 2, 0.35);
+}
+
+.share-action-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.share-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.share-modal-tip {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+  text-align: center;
+}

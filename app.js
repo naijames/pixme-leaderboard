@@ -1032,18 +1032,24 @@ function selectAthlete(name) {
       ? `${w.dist_km.toFixed(1)} km` 
       : timeStr;
       
+    const escapedName = w.name.replace(/'/g, "\\'");
     return `
-      <div class="workout-item">
-        <div class="workout-info">
+      <div class="workout-item" style="position: relative; display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 10px;">
+        <div class="workout-info" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
           <span class="workout-icon">${icon}</span>
-          <div>
-            <p class="workout-title" title="${w.name}">${w.name}</p>
-            <p class="workout-date">${translateDateToEn(w.date)}</p>
+          <div style="min-width: 0;">
+            <p class="workout-title" title="${w.name}" style="margin: 0; font-size: 0.8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${w.name}</p>
+            <p class="workout-date" style="margin: 2px 0 0 0; font-size: 0.65rem; color: var(--text-secondary);">${translateDateToEn(w.date)}</p>
           </div>
         </div>
-        <div class="workout-meta">
-          <p class="workout-val">${detailStr}</p>
-          <p class="workout-sub">${timeStr}</p>
+        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+          <div class="workout-meta" style="text-align: right;">
+            <p class="workout-val" style="margin: 0; font-size: 0.85rem; font-weight: 700;">${detailStr}</p>
+            <p class="workout-sub" style="margin: 2px 0 0 0; font-size: 0.65rem; color: var(--text-muted);">${timeStr}</p>
+          </div>
+          <button class="workout-share-btn" onclick="openShareOverlay('${name}', '${escapedName}', '${w.date}', ${w.dist_km}, ${w.moving_time}, '${w.sport_type}')" title="แชร์กิจกรรม">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+          </button>
         </div>
       </div>
     `;
@@ -1171,3 +1177,297 @@ function getIntervalSec() {
 
 // Start
 loadData();
+
+// ==========================================================================
+// Workout Overlay Graphic & Sharing Functions
+// ==========================================================================
+function openShareOverlay(athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType) {
+  // 1. Create Modal Container if not exists
+  let modal = document.getElementById('share-graphic-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'share-graphic-modal';
+    modal.className = 'share-modal';
+    document.body.appendChild(modal);
+  }
+  
+  // 2. Set Modal Content
+  modal.innerHTML = `
+    <div class="share-modal-backdrop" onclick="closeShareOverlay()"></div>
+    <div class="share-modal-content">
+      <div class="share-modal-header">
+        <h4>สร้างรูปสรุปกิจกรรม</h4>
+        <button class="share-modal-close" onclick="closeShareOverlay()">&times;</button>
+      </div>
+      <div class="share-modal-body">
+        <div class="canvas-preview-container">
+          <canvas id="share-canvas" style="display:none;"></canvas>
+          <img id="share-image-preview" alt="Preview Image" class="share-preview-img" />
+          <div id="canvas-loading" class="canvas-loader hidden">กำลังประมวลผล...</div>
+        </div>
+        
+        <div class="share-controls">
+          <label class="custom-file-upload">
+            <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" />
+            <span>📸 เลือกรูปภาพประกอบ</span>
+          </label>
+        </div>
+      </div>
+      <div class="share-modal-footer">
+        <button id="download-graphic-btn" class="share-btn download-btn" onclick="downloadGeneratedGraphic('${athleteName}')">📥 ดาวน์โหลดรูปภาพ</button>
+        <button id="share-graphic-btn" class="share-btn share-action-btn" onclick="shareGeneratedGraphic('${athleteName}')">📤 แชร์ไปยังแอปอื่น</button>
+        <p class="share-modal-tip">💡 ทิป: บนมือถือสามารถกดค้างที่รูปภาพด้านบนเพื่อบันทึกหรือคัดลอกได้เช่นกัน</p>
+      </div>
+    </div>
+  `;
+  
+  // Show Modal
+  modal.classList.add('open');
+  
+  // Save activity info globally so handler can access
+  window.currentShareData = {
+    athleteName: athleteName,
+    activityName: activityName,
+    dateStr: dateStr,
+    distanceKm: distanceKm,
+    movingTimeSec: movingTimeSec,
+    sportType: sportType,
+    bgImage: null
+  };
+  
+  // Initial draw with default gradient
+  refreshShareCanvas();
+}
+
+function closeShareOverlay() {
+  const modal = document.getElementById('share-graphic-modal');
+  if (modal) {
+    modal.classList.remove('open');
+  }
+}
+
+function handleSharePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const loading = document.getElementById('canvas-loading');
+  if (loading) loading.classList.remove('hidden');
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      window.currentShareData.bgImage = img;
+      refreshShareCanvas();
+      if (loading) loading.classList.add('hidden');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function refreshShareCanvas() {
+  const canvas = document.getElementById('share-canvas');
+  const imgPreview = document.getElementById('share-image-preview');
+  if (!canvas || !imgPreview) return;
+  
+  const d = window.currentShareData;
+  drawShareCanvas(canvas, d.bgImage, d.athleteName, d.activityName, d.dateStr, d.distanceKm, d.movingTimeSec, d.sportType);
+  
+  // Set preview img src
+  imgPreview.src = canvas.toDataURL('image/png');
+}
+
+function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType) {
+  const ctx = canvas.getContext('2d');
+  const size = 1080;
+  canvas.width = size;
+  canvas.height = size;
+  
+  // 1. Draw Background
+  if (bgImage) {
+    // Crop image to square (center crop)
+    const imgSize = Math.min(bgImage.width, bgImage.height);
+    const sx = (bgImage.width - imgSize) / 2;
+    const sy = (bgImage.height - imgSize) / 2;
+    ctx.drawImage(bgImage, sx, sy, imgSize, imgSize, 0, 0, size, size);
+  } else {
+    // Draw beautiful Sunset to Charcoal gradient
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, '#111827'); // dark gray
+    grad.addColorStop(0.5, '#1e293b'); // slate
+    grad.addColorStop(1, '#fc4c02'); // Strava orange
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+    
+    // Draw some subtle abstract shapes for aesthetics
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+    ctx.beginPath();
+    ctx.arc(size * 0.8, size * 0.2, 300, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(size * 0.2, size * 0.8, 400, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // 2. Draw Readability Gradients
+  // Top gradient
+  const topGrad = ctx.createLinearGradient(0, 0, 0, size * 0.25);
+  topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.75)');
+  topGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(0, 0, size, size * 0.25);
+  
+  // Bottom gradient
+  const bottomGrad = ctx.createLinearGradient(0, size * 0.5, 0, size);
+  bottomGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  bottomGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+  ctx.fillStyle = bottomGrad;
+  ctx.fillRect(0, size * 0.5, size, size * 0.5);
+  
+  // Helper for fonts
+  const fontSans = 'system-ui, -apple-system, sans-serif';
+  
+  // 3. Draw Header Section (Top)
+  // Left: Club Logo/Title
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 40px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('PIXME ACTIVE', 60, 60);
+  
+  ctx.fillStyle = '#FC4C02';
+  ctx.font = 'bold 22px ' + fontSans;
+  ctx.fillText('RUN & WALK CLUB', 60, 110);
+  
+  // Right: Athlete Profile Name
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 36px ' + fontSans;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'top';
+  ctx.fillText(athleteName, size - 60, 60);
+  
+  // 4. Draw Monthly Target Progress (Middle-Bottom)
+  const athlete = rawActivities.find(a => a.name === athleteName);
+  const distVal = athlete ? athlete.distance : distanceKm;
+  const progressPercent = Math.min((distVal / 100) * 100, 100);
+  const barY = size - 300;
+  const barWidth = size - 120;
+  const barHeight = 24;
+  
+  // Target Progress Title
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = 'bold 24px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`🎯 MONTHLY TARGET PROGRESS (${formatMonthShort(selectedMonth)})`, 60, barY - 15);
+  
+  ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+  ctx.font = 'bold 26px ' + fontSans;
+  ctx.textAlign = 'right';
+  ctx.fillText(`${distVal.toFixed(1)} / 100 KM (${progressPercent.toFixed(0)}%)`, size - 60, barY - 15);
+  
+  // Bar background
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(60, barY, barWidth, barHeight, 12);
+  } else {
+    ctx.rect(60, barY, barWidth, barHeight);
+  }
+  ctx.fill();
+  
+  // Bar Fill
+  if (progressPercent > 0) {
+    const fillGrad = ctx.createLinearGradient(60, barY, 60 + barWidth * (progressPercent / 100), barY);
+    if (distVal >= 100) {
+      fillGrad.addColorStop(0, '#FFD700'); // Gold
+      fillGrad.addColorStop(1, '#FFA500'); // Orange gold
+    } else if (distVal >= 80) {
+      fillGrad.addColorStop(0, '#00C6FF'); // Blue
+      fillGrad.addColorStop(1, '#0072FF');
+    } else {
+      fillGrad.addColorStop(0, '#fc4c02'); // Strava orange
+      fillGrad.addColorStop(1, '#ff7a00');
+    }
+    ctx.fillStyle = fillGrad;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(60, barY, barWidth * (progressPercent / 100), barHeight, 12);
+    } else {
+      ctx.rect(60, barY, barWidth * (progressPercent / 100), barHeight);
+    }
+    ctx.fill();
+  }
+  
+  // 5. Draw Activity Details (Bottom Left)
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 52px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  
+  // Clean sport emoji prefix
+  const emoji = sportType === 'Run' || sportType === 'TrailRun' || sportType === 'VirtualRun' ? '🏃' : sportType === 'Walk' ? '🚶' : sportType === 'Ride' ? '🚴' : '💪';
+  ctx.fillText(`${emoji} ${activityName}`, 60, size - 120);
+  
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.font = '500 28px ' + fontSans;
+  ctx.fillText(translateDateToEn(dateStr), 60, size - 70);
+  
+  // 6. Draw Workout Stats (Bottom Right)
+  // Distance
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 120px ' + fontSans;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(distanceKm.toFixed(2), size - 120, size - 110);
+  
+  ctx.fillStyle = '#FC4C02';
+  ctx.font = 'bold 36px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.fillText('KM', size - 110, size - 120);
+  
+  // Time
+  const timeStr = formatDuration(movingTimeSec);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 36px ' + fontSans;
+  ctx.textAlign = 'right';
+  ctx.fillText(timeStr, size - 60, size - 70);
+}
+
+function downloadGeneratedGraphic(athleteName) {
+  const canvas = document.getElementById('share-canvas');
+  if (!canvas) return;
+  
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `PixmeRun_${athleteName.replace(/\s+/g, '_')}_${Date.now()}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function shareGeneratedGraphic(athleteName) {
+  const canvas = document.getElementById('share-canvas');
+  if (!canvas) return;
+  
+  canvas.toBlob(async function(blob) {
+    if (!blob) return;
+    const file = new File([blob], `PixmeRun_${athleteName.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
+    
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'กิจกรรมจาก Pixme Active Club',
+          text: 'ดูสถิติและเป้าหมายประจำเดือนของฉัน!'
+        });
+      } catch (err) {
+        console.error('การแชร์ล้มเหลว:', err);
+      }
+    } else {
+      alert('เบราว์เซอร์นี้ไม่รองรับการแชร์ไฟล์โดยตรง กรุณากดค้างที่รูปภาพเพื่อบันทึกและแชร์ด้วยตนเองครับ');
+    }
+  }, 'image/png');
+}
