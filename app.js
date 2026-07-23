@@ -430,10 +430,6 @@ function loadData() {
   setStatusBadge('wait', 'กำลังโหลด');
   document.getElementById('refresh-icon').classList.add('spinning');
   
-  // Reset selected details when month changes
-  selectedAthleteId = null;
-  resetDetailPanels();
-  
   const cbName = 'cb_' + Date.now();
   const timeout = setTimeout(function() {
     delete window[cbName];
@@ -516,6 +512,8 @@ function loadData() {
 
 function onMonthChange() {
   selectedMonth = document.getElementById('month-select').value;
+  selectedAthleteId = null;
+  resetDetailPanels();
   loadData();
 }
 
@@ -687,11 +685,17 @@ function processData() {
 
   renderLeaderboard();
   
-  // Auto-select the first athlete on desktop if none is selected
-  if (window.innerWidth > 820 && !selectedAthleteId && computedLeaderboard.length > 0) {
-    const firstAthlete = computedLeaderboard[0];
-    const firstName = activeTab === 'recent' ? firstAthlete.athleteName : firstAthlete.name;
-    selectAthlete(firstName);
+  // Seamlessly restore or auto-select active athlete on desktop without flickering
+  if (window.innerWidth > 820 && computedLeaderboard.length > 0) {
+    const savedAthlete = localStorage.getItem('pixme_selected_athlete');
+    const targetAthlete = selectedAthleteId || savedAthlete;
+    if (targetAthlete && rawActivities.some(a => a.name === targetAthlete)) {
+      selectAthlete(targetAthlete);
+    } else {
+      const firstAthlete = computedLeaderboard[0];
+      const firstName = activeTab === 'recent' ? firstAthlete.athleteName : firstAthlete.name;
+      selectAthlete(firstName);
+    }
   }
 }
 
@@ -838,6 +842,9 @@ function getAvatarUrl(name, apiAvatar) {
 
 function selectAthlete(name) {
   selectedAthleteId = name;
+  try {
+    localStorage.setItem('pixme_selected_athlete', name);
+  } catch (e) {}
   
   // Highlight active row in table
   renderLeaderboard();
@@ -1200,6 +1207,24 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
         <button class="share-modal-close" onclick="closeShareOverlay()">&times;</button>
       </div>
       <div class="share-modal-body">
+        <div class="share-options-bar" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-bottom: 6px;">
+          <div class="share-template-selector">
+            <button class="template-pill active" onclick="selectShareTemplate('classic', event)">🏆 คลาสสิก</button>
+            <button class="template-pill" onclick="selectShareTemplate('minimal', event)">⚡ มินิมอล (Nike/Strava)</button>
+            <button class="template-pill" onclick="selectShareTemplate('stamp', event)">🏷️ ตราประทับสปอร์ต</button>
+            <button class="template-pill" onclick="selectShareTemplate('monthly', event)">🎯 เป้าหมายเดือน</button>
+            <button class="template-pill" onclick="selectShareTemplate('weekly', event)">📊 กราฟ 7 วัน</button>
+            <button class="template-pill" onclick="selectShareTemplate('profile', event)">📱 สรุปโปรไฟล์</button>
+            <button class="template-pill" onclick="selectShareTemplate('framed', event)">🖼️ กรอบรูป & สถิติเด่น</button>
+          </div>
+          <div class="share-ratio-selector">
+            <button class="ratio-pill active" onclick="selectShareRatio('1:1', event)">🔳 1:1</button>
+            <button class="ratio-pill" onclick="selectShareRatio('4:5', event)">📱 4:5 แนวตั้ง</button>
+            <button class="ratio-pill" onclick="selectShareRatio('9:16', event)">📲 9:16 สตอรี่</button>
+            <button class="ratio-pill" onclick="selectShareRatio('16:9', event)">🖼️ 16:9 แนวนอน</button>
+          </div>
+        </div>
+
         <div class="canvas-preview-container">
           <canvas id="share-canvas" style="display:none;"></canvas>
           <img id="share-image-preview" alt="Preview Image" class="share-preview-img" />
@@ -1207,10 +1232,16 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
         </div>
         
         <div class="share-controls" style="display: flex; flex-direction: column; align-items: center; width: 100%; gap: 10px;">
-          <label class="custom-file-upload">
-            <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" />
-            <span>📸 เลือกรูปภาพประกอบ</span>
-          </label>
+          <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; width: 100%;">
+            <label class="custom-file-upload">
+              <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" />
+              <span>📸 เลือกรูปภาพประกอบ</span>
+            </label>
+            <label class="transparent-bg-toggle" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; color: #fff; cursor: pointer; background: rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.18);">
+              <input type="checkbox" id="transparent-bg-checkbox" onchange="toggleTransparentBG(event)" style="accent-color: var(--color-orange); width: 16px; height: 16px; cursor: pointer;" />
+              <span>🔲 พื้นหลังโปร่งใส (Transparent PNG)</span>
+            </label>
+          </div>
           
           <div class="share-slider-container hidden" id="photo-slider-wrapper" style="width: 100%; margin-top: 10px; text-align: center;">
             <label for="share-photo-slider" style="display: block; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
@@ -1240,11 +1271,79 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
     movingTimeSec: movingTimeSec,
     sportType: sportType,
     bgImage: null,
-    sliderValue: 50
+    sliderValue: 50,
+    template: 'classic',
+    ratio: '1:1',
+    isTransparentBG: false
   };
   
   // Initial draw with default gradient
   refreshShareCanvas();
+}
+
+function toggleTransparentBG(event) {
+  if (window.currentShareData) {
+    window.currentShareData.isTransparentBG = event.target.checked;
+    
+    // Hide photo slider when transparent BG is checked
+    const sliderWrapper = document.getElementById('photo-slider-wrapper');
+    if (sliderWrapper) {
+      if (event.target.checked) {
+        sliderWrapper.classList.add('hidden');
+      } else if (window.currentShareData.bgImage) {
+        sliderWrapper.classList.remove('hidden');
+      }
+    }
+    refreshShareCanvas();
+  }
+}
+
+function selectShareTemplate(template, event) {
+  if (window.currentShareData) {
+    window.currentShareData.template = template;
+    
+    // Update active class on pills
+    const pills = document.querySelectorAll('.template-pill');
+    pills.forEach(p => p.classList.remove('active'));
+    if (event && event.currentTarget) {
+      event.currentTarget.classList.add('active');
+    }
+    
+    if (template === 'profile') {
+      // Default to 9:16 vertical story for Profile Summary template
+      window.currentShareData.ratio = '9:16';
+      const ratioPills = document.querySelectorAll('.ratio-pill');
+      ratioPills.forEach(p => p.classList.remove('active'));
+      ratioPills.forEach(p => {
+        if (p.textContent.includes('9:16')) p.classList.add('active');
+      });
+      const previewContainer = document.querySelector('.canvas-preview-container');
+      if (previewContainer) {
+        previewContainer.style.aspectRatio = '9/16';
+      }
+    }
+    
+    refreshShareCanvas();
+  }
+}
+
+function selectShareRatio(ratio, event) {
+  if (window.currentShareData) {
+    window.currentShareData.ratio = ratio;
+    
+    const pills = document.querySelectorAll('.ratio-pill');
+    pills.forEach(p => p.classList.remove('active'));
+    if (event && event.currentTarget) {
+      event.currentTarget.classList.add('active');
+    }
+    
+    const previewContainer = document.querySelector('.canvas-preview-container');
+    if (previewContainer) {
+      previewContainer.style.aspectRatio = ratio.replace(':', '/');
+    }
+    
+    refreshShareCanvas();
+  }
 }
 
 function closeShareOverlay() {
@@ -1268,10 +1367,9 @@ function handleSharePhotoUpload(event) {
       window.currentShareData.bgImage = img;
       window.currentShareData.sliderValue = 50;
       
-      // Show slider if image is not square
       const sliderWrapper = document.getElementById('photo-slider-wrapper');
       if (sliderWrapper) {
-        if (img.width !== img.height) {
+        if (img.width !== img.height && !window.currentShareData.isTransparentBG) {
           sliderWrapper.classList.remove('hidden');
           const slider = document.getElementById('share-photo-slider');
           if (slider) slider.value = 50;
@@ -1303,176 +1401,1160 @@ function refreshShareCanvas() {
   const d = window.currentShareData;
   drawShareCanvas(canvas, d.bgImage, d.athleteName, d.activityName, d.dateStr, d.distanceKm, d.movingTimeSec, d.sportType);
   
-  // Set preview img src
   imgPreview.src = canvas.toDataURL('image/png');
+}
+
+function get7DayRollingData(athleteName) {
+  const weekDateStrings = [];
+  const weekdayLabels = [];
+  const dayNumbers = [];
+  const baseDate = new Date();
+  const DAY_LABELS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+  
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(baseDate);
+    d.setDate(baseDate.getDate() - 6 + i);
+    const day = d.getDate();
+    const monthThai = MONTH_TH[d.getMonth()];
+    weekDateStrings.push(`${day} ${monthThai}`);
+    weekdayLabels.push(DAY_LABELS[d.getDay()]);
+    dayNumbers.push(i === 6 ? 'TODAY' : String(day));
+  }
+
+  const dailyValues = [0, 0, 0, 0, 0, 0, 0];
+  const logsToUse = (currentMonthWorkoutLogs && currentMonthWorkoutLogs.length > 0) ? currentMonthWorkoutLogs : rawWorkoutLogs;
+  const athleteWorkouts = getWorkoutsForAthlete(athleteName, 0, 0, '', 0, logsToUse);
+  
+  athleteWorkouts.forEach(w => {
+    const parts = w.date.split(' ');
+    if (parts.length >= 2) {
+      const dateStr = `${parts[0]} ${parts[1]}`;
+      const idx = weekDateStrings.indexOf(dateStr);
+      if (idx !== -1) {
+        const isRunOrWalk = ['Run', 'TrailRun', 'VirtualRun', 'Walk'].includes(w.sport_type);
+        if (isRunOrWalk) {
+          dailyValues[idx] += w.dist_km;
+        }
+      }
+    }
+  });
+
+  return { weekdayLabels, dayNumbers, dailyValues };
 }
 
 function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType) {
   const ctx = canvas.getContext('2d');
-  const size = 1080;
-  canvas.width = size;
-  canvas.height = size;
   
-  // 1. Draw Background
-  if (bgImage) {
-    const imgSize = Math.min(bgImage.width, bgImage.height);
-    const sliderVal = window.currentShareData && window.currentShareData.sliderValue !== undefined ? window.currentShareData.sliderValue : 50;
+  const ratio = (window.currentShareData && window.currentShareData.ratio) || '1:1';
+  let sizeW = 1080;
+  let sizeH = 1080;
+  
+  if (ratio === '4:5') {
+    sizeW = 1080;
+    sizeH = 1350;
+  } else if (ratio === '9:16') {
+    sizeW = 1080;
+    sizeH = 1920;
+  } else if (ratio === '16:9') {
+    sizeW = 1920;
+    sizeH = 1080;
+  }
+  
+  canvas.width = sizeW;
+  canvas.height = sizeH;
+  
+  const template = (window.currentShareData && window.currentShareData.template) || 'classic';
+  const isTransparentBG = (window.currentShareData && window.currentShareData.isTransparentBG) || false;
+  
+  // 1. Draw Background Photo, Gradient, or Clear for Transparent PNG
+  if (isTransparentBG) {
+    ctx.clearRect(0, 0, sizeW, sizeH);
+  } else if (bgImage) {
+    const targetAspect = sizeW / sizeH;
+    const imgAspect = bgImage.width / bgImage.height;
+    const sliderVal = (window.currentShareData && window.currentShareData.sliderValue !== undefined) ? window.currentShareData.sliderValue : 50;
     
-    let sx = 0;
-    let sy = 0;
+    let sx = 0, sy = 0, sWidth = bgImage.width, sHeight = bgImage.height;
     
-    if (bgImage.width > bgImage.height) {
-      // Landscape: Slide horizontally
-      const maxOffset = bgImage.width - bgImage.height;
+    if (imgAspect > targetAspect) {
+      sWidth = bgImage.height * targetAspect;
+      sHeight = bgImage.height;
+      const maxOffset = bgImage.width - sWidth;
       sx = maxOffset * (sliderVal / 100);
-    } else if (bgImage.height > bgImage.width) {
-      // Portrait: Slide vertically
-      const maxOffset = bgImage.height - bgImage.width;
+      sy = 0;
+    } else {
+      sWidth = bgImage.width;
+      sHeight = bgImage.width / targetAspect;
+      const maxOffset = bgImage.height - sHeight;
+      sx = 0;
       sy = maxOffset * (sliderVal / 100);
     }
-    ctx.drawImage(bgImage, sx, sy, imgSize, imgSize, 0, 0, size, size);
+    ctx.drawImage(bgImage, sx, sy, sWidth, sHeight, 0, 0, sizeW, sizeH);
   } else {
-    // Draw beautiful Sunset to Charcoal gradient
-    const grad = ctx.createLinearGradient(0, 0, size, size);
-    grad.addColorStop(0, '#111827'); // dark gray
-    grad.addColorStop(0.5, '#1e293b'); // slate
-    grad.addColorStop(1, '#fc4c02'); // Strava orange
+    const grad = ctx.createLinearGradient(0, 0, sizeW, sizeH);
+    if (template === 'minimal') {
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(0.5, '#1e1b4b');
+      grad.addColorStop(1, '#312e81');
+    } else if (template === 'weekly') {
+      grad.addColorStop(0, '#090d16');
+      grad.addColorStop(0.5, '#111827');
+      grad.addColorStop(1, '#0284c7');
+    } else if (template === 'stamp') {
+      grad.addColorStop(0, '#181028');
+      grad.addColorStop(0.5, '#231536');
+      grad.addColorStop(1, '#fc4c02');
+    } else {
+      grad.addColorStop(0, '#111827');
+      grad.addColorStop(0.5, '#1e293b');
+      grad.addColorStop(1, '#fc4c02');
+    }
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, size, size);
+    ctx.fillRect(0, 0, sizeW, sizeH);
     
-    // Draw some subtle abstract shapes for aesthetics
     ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
     ctx.beginPath();
-    ctx.arc(size * 0.8, size * 0.2, 300, 0, Math.PI * 2);
+    ctx.arc(sizeW * 0.8, sizeH * 0.2, 300, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(size * 0.2, size * 0.8, 400, 0, Math.PI * 2);
+    ctx.arc(sizeW * 0.2, sizeH * 0.8, 400, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // 2. Draw Readability Gradients
-  // Top gradient
-  const topGrad = ctx.createLinearGradient(0, 0, 0, size * 0.25);
-  topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.75)');
-  topGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = topGrad;
-  ctx.fillRect(0, 0, size, size * 0.25);
+  // 2. Draw Readability Gradients (Only if not transparent & not ultra-minimal)
+  if (!isTransparentBG && template !== 'minimal' && template !== 'stamp' && template !== 'framed') {
+    const topGrad = ctx.createLinearGradient(0, 0, 0, sizeH * 0.32);
+    topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.82)');
+    topGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(0, 0, sizeW, sizeH * 0.32);
+    
+    const bottomGrad = ctx.createLinearGradient(0, sizeH * 0.45, 0, sizeH);
+    bottomGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    bottomGrad.addColorStop(1, 'rgba(0, 0, 0, 0.92)');
+    ctx.fillStyle = bottomGrad;
+    ctx.fillRect(0, sizeH * 0.45, sizeW, sizeH * 0.55);
+  }
   
-  // Bottom gradient
-  const bottomGrad = ctx.createLinearGradient(0, size * 0.5, 0, size);
-  bottomGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  bottomGrad.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
-  ctx.fillStyle = bottomGrad;
-  ctx.fillRect(0, size * 0.5, size, size * 0.5);
-  
-  // Helper for fonts
   const fontSans = 'system-ui, -apple-system, sans-serif';
-  
-  // 3. Draw Header Section (Top)
-  // Left: Club Logo/Title
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 40px ' + fontSans;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText('Pixme Run Club', 60, 60);
-  
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 22px ' + fontSans;
-  ctx.fillText('Shut up !!! ,,, and Run …,,,', 60, 110);
-  
-  // Right: Athlete Profile Name
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 36px ' + fontSans;
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'top';
-  ctx.fillText(athleteName, size - 60, 60);
-  
-  // 4. Draw Monthly Target Progress (Middle-Bottom)
+  const emoji = sportType === 'Run' || sportType === 'TrailRun' || sportType === 'VirtualRun' ? '🏃' : sportType === 'Walk' ? '🚶' : sportType === 'Ride' ? '🚴' : '💪';
+  const timeStr = formatDuration(movingTimeSec);
   const athlete = rawActivities.find(a => a.name === athleteName);
   const distVal = athlete ? athlete.distance : distanceKm;
   const progressPercent = Math.min((distVal / 100) * 100, 100);
-  const barY = size - 300;
-  const barWidth = size - 120;
-  const barHeight = 24;
-  
-  // Target Progress Title
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-  ctx.font = 'bold 24px ' + fontSans;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(`🎯 MONTHLY TARGET PROGRESS (${formatMonthShort(selectedMonth)})`, 60, barY - 15);
-  
-  ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
-  ctx.font = 'bold 26px ' + fontSans;
-  ctx.textAlign = 'right';
-  ctx.fillText(`${distVal.toFixed(1)} / 100 KM (${progressPercent.toFixed(0)}%)`, size - 60, barY - 15);
-  
-  // Bar background
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(60, barY, barWidth, barHeight, 12);
+
+  let statusMsg = `🏃 ขาดอีก ${(100 - distVal).toFixed(1)} km ถึงเป้าหมาย!`;
+  if (distVal >= 100) {
+    statusMsg = '🎉 Goal 100km Achieved!';
+  } else if (distVal >= 80) {
+    statusMsg = `💪 เหลือเพียง ${(100 - distVal).toFixed(1)} km!`;
+  }
+
+  // Set drop shadow for transparent PNG or unbacked text
+  if (isTransparentBG || template === 'minimal' || template === 'stamp') {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 10;
   } else {
-    ctx.rect(60, barY, barWidth, barHeight);
+    ctx.shadowBlur = 0;
   }
-  ctx.fill();
-  
-  // Bar Fill
-  if (progressPercent > 0) {
-    const fillGrad = ctx.createLinearGradient(60, barY, 60 + barWidth * (progressPercent / 100), barY);
-    if (distVal >= 100) {
-      fillGrad.addColorStop(0, '#FFD700'); // Gold
-      fillGrad.addColorStop(1, '#FFA500'); // Orange gold
-    } else if (distVal >= 80) {
-      fillGrad.addColorStop(0, '#00C6FF'); // Blue
-      fillGrad.addColorStop(1, '#0072FF');
-    } else {
-      fillGrad.addColorStop(0, '#fc4c02'); // Strava orange
-      fillGrad.addColorStop(1, '#ff7a00');
-    }
-    ctx.fillStyle = fillGrad;
+
+  if (template === 'minimal') {
+    // ==========================================
+    // TEMPLATE 2: ULTRA MINIMAL (NIKE / STRAVA STYLE)
+    // ==========================================
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 36px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Pixme Run Club', 60, 60);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 32px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.fillText(athleteName, sizeW - 60, 60);
+
+    const fontPx = sizeH > 1400 ? 210 : 170;
+    const textY = sizeH - (sizeH > 1400 ? 260 : 200);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${fontPx}px ${fontSans}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(distanceKm.toFixed(2), 60, textY);
+
+    const distWidth = ctx.measureText(distanceKm.toFixed(2)).width;
+    ctx.fillStyle = '#FC4C02';
+    ctx.font = 'bold 42px ' + fontSans;
+    ctx.fillText('KM', 60 + distWidth + 18, textY - 10);
+
+    ctx.shadowBlur = 0;
+
+    const pillY = sizeH - 120;
+    const pillH = 68;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(60, barY, barWidth * (progressPercent / 100), barHeight, 12);
-    } else {
-      ctx.rect(60, barY, barWidth * (progressPercent / 100), barHeight);
-    }
+    if (ctx.roundRect) ctx.roundRect(60, pillY, sizeW - 120, pillH, 34);
+    else ctx.rect(60, pillY, sizeW - 120, pillH);
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px ' + fontSans;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${emoji} ${activityName}  •  ${translateDateToEn(dateStr)}  •  ⏱️ ${timeStr}`, sizeW / 2, pillY + pillH / 2);
+
+  } else if (template === 'stamp') {
+    // ==========================================
+    // TEMPLATE 3: SPORT STAMP / RACE BIB BADGE
+    // ==========================================
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 36px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Pixme Run Club', 60, 60);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 32px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.fillText(athleteName, sizeW - 60, 60);
+
+    ctx.shadowBlur = 0;
+
+    const stampW = 540;
+    const stampH = 260;
+    const stampX = 60;
+    const stampY = sizeH - stampH - 60;
+
+    ctx.fillStyle = 'rgba(10, 15, 24, 0.72)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(stampX, stampY, stampW, stampH, 24);
+    else ctx.rect(stampX, stampY, stampW, stampH);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FC4C02';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('OFFICIAL ATHLETE STAMP', stampX + 30, stampY + 28);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 78px ' + fontSans;
+    ctx.fillText(distanceKm.toFixed(2), stampX + 30, stampY + 62);
+
+    const sw = ctx.measureText(distanceKm.toFixed(2)).width;
+    ctx.fillStyle = '#FC4C02';
+    ctx.font = 'bold 32px ' + fontSans;
+    ctx.fillText('KM', stampX + 30 + sw + 12, stampY + 102);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.font = 'bold 24px ' + fontSans;
+    ctx.fillText(`${emoji} ${activityName}`, stampX + 30, stampY + 165);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '500 20px ' + fontSans;
+    ctx.fillText(`${translateDateToEn(dateStr)}  •  ⏱️ ${timeStr}`, stampX + 30, stampY + 205);
+
+    const tPillW = 380;
+    const tPillH = 70;
+    const tPillX = sizeW - tPillW - 60;
+    const tPillY = sizeH - tPillH - 60;
+
+    ctx.fillStyle = 'rgba(10, 15, 24, 0.72)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(tPillX, tPillY, tPillW, tPillH, 35);
+    else ctx.rect(tPillX, tPillY, tPillW, tPillH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+    ctx.font = 'bold 22px ' + fontSans;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`🎯 Target ${progressPercent.toFixed(0)}% (${distVal.toFixed(1)}/100K)`, tPillX + tPillW / 2, tPillY + tPillH / 2);
+
+  } else if (template === 'monthly') {
+    // ==========================================
+    // TEMPLATE 4: REDESIGNED MONTHLY TARGET FOCUS
+    // ==========================================
+    const topY = ratio === '1:1' ? 85 : 70;
+    const leftX = 70;
+    const rightX = sizeW - 70;
+
+    // Header Top Left: Club Header + 2-Line Activity Info below
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 38px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Pixme Run Club', leftX, topY);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 48);
+
+    // 2-Line Activity Info under title (Bigger font & clear spacing)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 28px ' + fontSans;
+    ctx.fillText(`${emoji} ${activityName}`, leftX, topY + 95);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = '500 24px ' + fontSans;
+    ctx.fillText(`📅 ${translateDateToEn(dateStr)}   ⏱️ ${timeStr} (${distanceKm.toFixed(2)} KM)`, leftX, topY + 135);
+
+    // Header Top Right: Athlete Profile Name
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 34px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(athleteName, rightX, topY);
+
+    ctx.shadowBlur = 0;
+
+    // HERO STATS (MONTHLY ACCUMULATED & TARGET %)
+    const isLandscape = (ratio === '16:9');
+    const boxW = isLandscape ? 980 : sizeW - 140;
+    const startX = leftX;
+    const endX = startX + boxW;
+    const heroY = isLandscape ? sizeH - 240 : (sizeH > 1400 ? sizeH - 250 : sizeH - 200);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+    ctx.font = 'bold 24px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`🎯 MONTHLY TARGET SUMMARY (${formatMonthShort(selectedMonth)})`, startX, heroY - 140);
+
+    // Giant Accumulated Distance (Equalized font size with Goal %)
+    const statFontSize = isLandscape ? 115 : (sizeH > 1400 ? 135 : 120);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = `bold ${statFontSize}px ${fontSans}`;
+    ctx.textAlign = 'left';
+    ctx.fillText(`${distVal.toFixed(1)}`, startX, heroY);
+
+    const mDistWidth = ctx.measureText(`${distVal.toFixed(1)}`).width;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = 'bold 36px ' + fontSans;
+    ctx.fillText('/ 100 KM', startX + mDistWidth + 18, heroY - 15);
+
+    // Giant Goal Percent (Right side of boxW)
+    ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+    ctx.font = `bold ${statFontSize}px ${fontSans}`;
+    ctx.textAlign = 'right';
+    ctx.fillText(`${progressPercent.toFixed(0)}%`, endX, heroY);
+
+    // Progress Bar
+    const barY = heroY + 30;
+    const barH = 26;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(startX, barY, boxW, barH, 13);
+    else ctx.rect(startX, barY, boxW, barH);
+    ctx.fill();
+
+    if (progressPercent > 0) {
+      const fillW = boxW * (progressPercent / 100);
+      const fillGrad = ctx.createLinearGradient(startX, barY, startX + fillW, barY);
+      fillGrad.addColorStop(0, distVal >= 100 ? '#FFD700' : '#fc4c02');
+      fillGrad.addColorStop(1, distVal >= 100 ? '#FFA500' : '#ff7a00');
+      ctx.fillStyle = fillGrad;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(startX, barY, fillW, barH, 13);
+      else ctx.rect(startX, barY, fillW, barH);
+      ctx.fill();
+    }
+
+    // Status Pill Badge at Bottom
+    const pillY = barY + 48;
+    ctx.fillStyle = 'rgba(10, 15, 24, 0.65)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(startX, pillY, boxW, 52, 26);
+    else ctx.rect(startX, pillY, boxW, 52);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px ' + fontSans;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(statusMsg, startX + boxW / 2, pillY + 26);
+
+  } else if (template === 'weekly') {
+    // ==========================================
+    // TEMPLATE 5: REDESIGNED COMPACT 7-DAY CAPSULE CHART
+    // ==========================================
+    const rollingData = get7DayRollingData(athleteName);
+    const isLandscape = (ratio === '16:9');
+
+    const topY = ratio === '1:1' ? 85 : 70;
+    const leftX = 70;
+    const rightX = sizeW - 70;
+
+    // Header Top Left: Club Header + 2-Line Activity Info below
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 38px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Pixme Run Club', leftX, topY);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 48);
+
+    // 2-Line Activity Info under title (Bigger font & clear spacing)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 28px ' + fontSans;
+    ctx.fillText(`${emoji} ${activityName}`, leftX, topY + 95);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = '500 24px ' + fontSans;
+    ctx.fillText(`📅 ${translateDateToEn(dateStr)}   ⏱️ ${timeStr} (${distanceKm.toFixed(2)} KM)`, leftX, topY + 135);
+
+    // Header Top Right: Athlete Profile Name
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 34px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(athleteName, rightX, topY);
+
+    ctx.shadowBlur = 0;
+
+    // Glass 7-Day Capsule Card (Bottom-left half for 16:9 landscape!)
+    const cardW = isLandscape ? 1020 : sizeW - 140;
+    const cardH = sizeH > 1400 ? 440 : 370;
+    const cardX = leftX;
+    const cardY = sizeH - cardH - (isLandscape ? 50 : (sizeH > 1400 ? 80 : 50));
+
+    if (!isTransparentBG) {
+      ctx.fillStyle = 'rgba(10, 15, 24, 0.72)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cardX, cardY, cardW, cardH, 28);
+      else ctx.rect(cardX, cardY, cardW, cardH);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Title inside card
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 28px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('7 วันล่าสุด', cardX + 35, cardY + 28);
+
+    const maxVal = Math.max(...rollingData.dailyValues, 10);
+    const chartBottomY = cardY + cardH - 95;
+    const maxBarH = cardH - 170;
+    
+    // Fixed slim bar width for sleek tall capsules matching Athlete Profile Card
+    const barW = isLandscape ? 48 : (sizeH > 1400 ? 56 : 46);
+    const gap = isLandscape ? 36 : (sizeH > 1400 ? 32 : 28);
+    const totalBarsWidth = 7 * barW + 6 * gap;
+    const startX = cardX + Math.floor((cardW - totalBarsWidth) / 2);
+
+    for (let i = 0; i < 7; i++) {
+      const val = rollingData.dailyValues[i];
+      const bx = startX + i * (barW + gap);
+      const isToday = (i === 6);
+      
+      // Capsule track
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, chartBottomY - maxBarH, barW, maxBarH, barW / 2);
+      else ctx.rect(bx, chartBottomY - maxBarH, barW, maxBarH);
+      ctx.fill();
+
+      // Active Capsule Bar (Gradient top to bottom)
+      if (val > 0) {
+        const h = Math.min((val / maxVal) * maxBarH, maxBarH);
+        const fillGrad = ctx.createLinearGradient(bx, chartBottomY - h, bx, chartBottomY);
+        fillGrad.addColorStop(0, '#FC4C02');
+        fillGrad.addColorStop(1, '#3B82F6');
+
+        ctx.fillStyle = fillGrad;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, chartBottomY - h, barW, h, barW / 2);
+        else ctx.rect(bx, chartBottomY - h, barW, h);
+        ctx.fill();
+
+        // Runner emoji
+        ctx.font = 'bold 22px ' + fontSans;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🏃', bx + barW / 2, chartBottomY - Math.max(h / 2, 20));
+
+        // Distance value above bar
+        ctx.fillStyle = isToday ? '#FFD700' : '#FFFFFF';
+        ctx.font = 'bold 19px ' + fontSans;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(val.toFixed(1), bx + barW / 2, chartBottomY - h - 6);
+      }
+
+      // Weekday Label
+      ctx.fillStyle = isToday ? '#FC4C02' : 'rgba(255, 255, 255, 0.85)';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(rollingData.weekdayLabels[i], bx + barW / 2, chartBottomY + 10);
+
+      // Day Number / TODAY
+      ctx.fillStyle = isToday ? '#FC4C02' : 'rgba(255, 255, 255, 0.55)';
+      ctx.font = isToday ? 'bold 20px ' + fontSans : '500 18px ' + fontSans;
+      ctx.fillText(rollingData.dayNumbers[i], bx + barW / 2, chartBottomY + 40);
+    }
+  } else if (template === 'profile') {
+    // ==========================================
+    // TEMPLATE 7: ATHLETE PROFILE CARD SUMMARY (WITH 4 LATEST WORKOUTS)
+    // ==========================================
+    const rollingData = get7DayRollingData(athleteName);
+    const topY = ratio === '1:1' ? 70 : 60;
+    const leftX = 60;
+    const rightX = sizeW - 60;
+    const boxW = sizeW - 120;
+
+    // Header Top Left & Top Right
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 36px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Pixme Run Club', leftX, topY);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 44);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 34px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(athleteName, rightX, topY);
+
+    ctx.shadowBlur = 0;
+
+    // CARD 1: TARGET PROGRESS BOX
+    const card1Y = topY + 90;
+    const card1H = 135;
+
+    if (!isTransparentBG) {
+      ctx.fillStyle = 'rgba(10, 15, 24, 0.75)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(leftX, card1Y, boxW, card1H, 20);
+      else ctx.rect(leftX, card1Y, boxW, card1H);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`TARGET (${formatMonthShort(selectedMonth)}) - 100K`, leftX + 24, card1Y + 20);
+
+    ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+    ctx.font = 'bold 22px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.fillText(`${progressPercent.toFixed(0)}%`, rightX - 24, card1Y + 20);
+
+    const c1BarY = card1Y + 56;
+    const c1BarW = boxW - 48;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(leftX + 24, c1BarY, c1BarW, 12, 6);
+    else ctx.rect(leftX + 24, c1BarY, c1BarW, 12);
+    ctx.fill();
+
+    if (progressPercent > 0) {
+      const c1FillW = c1BarW * (progressPercent / 100);
+      const c1FillGrad = ctx.createLinearGradient(leftX + 24, c1BarY, leftX + 24 + c1FillW, c1BarY);
+      c1FillGrad.addColorStop(0, distVal >= 100 ? '#FFD700' : '#fc4c02');
+      c1FillGrad.addColorStop(1, distVal >= 100 ? '#FFA500' : '#ff7a00');
+      ctx.fillStyle = c1FillGrad;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(leftX + 24, c1BarY, c1FillW, 12, 6);
+      else ctx.rect(leftX + 24, c1BarY, c1FillW, 12);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.font = 'bold 18px ' + fontSans;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(statusMsg, sizeW / 2, card1Y + 84);
+
+    // CARD 2: SIDE-BY-SIDE STAT BOXES
+    const card2Y = card1Y + card1H + 20;
+    const statBoxW = Math.floor((boxW - 20) / 2);
+    const statBoxH = 130;
+
+    // Left Box: Accumulated Distance
+    const box2AX = leftX;
+    if (!isTransparentBG) {
+      ctx.fillStyle = 'rgba(10, 15, 24, 0.75)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(box2AX, card2Y, statBoxW, statBoxH, 20);
+      else ctx.rect(box2AX, card2Y, statBoxW, statBoxH);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`วิ่งสะสม (${formatMonthShort(selectedMonth)})`, box2AX + statBoxW / 2, card2Y + 22);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 42px ' + fontSans;
+    ctx.fillText(`${distVal.toFixed(1)} km`, box2AX + statBoxW / 2, card2Y + 60);
+
+    // Right Box: Total Workout Duration
+    const box2BX = leftX + statBoxW + 20;
+    let totalSecs = 0;
+    if (athlete && athlete.movingTime !== undefined && athlete.movingTime > 0) {
+      totalSecs = athlete.movingTime;
+    } else {
+      const athleteWorkouts = getWorkoutsForAthlete(athleteName, distVal, 0, sportType);
+      athleteWorkouts.forEach(w => { totalSecs += w.moving_time; });
+    }
+
+    if (!isTransparentBG) {
+      ctx.fillStyle = 'rgba(10, 15, 24, 0.75)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(box2BX, card2Y, statBoxW, statBoxH, 20);
+      else ctx.rect(box2BX, card2Y, statBoxW, statBoxH);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.textAlign = 'center';
+    ctx.fillText(`เวลาซ้อมรวม (${formatMonthShort(selectedMonth)})`, box2BX + statBoxW / 2, card2Y + 22);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 42px ' + fontSans;
+    ctx.fillText(formatDuration(totalSecs), box2BX + statBoxW / 2, card2Y + 60);
+
+    // CARD 3: 7-DAY CAPSULE BAR CHART
+    const card3Y = card2Y + statBoxH + 20;
+    const card3H = 340;
+
+    if (!isTransparentBG) {
+      ctx.fillStyle = 'rgba(10, 15, 24, 0.75)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(leftX, card3Y, boxW, card3H, 24);
+      else ctx.rect(leftX, card3Y, boxW, card3H);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('7 วันล่าสุด', leftX + 30, card3Y + 20);
+
+    const c3MaxVal = Math.max(...rollingData.dailyValues, 10);
+    const c3BottomY = card3Y + card3H - 85;
+    const c3MaxBarH = 150;
+    const c3BarW = 44;
+    const c3Gap = Math.floor((boxW - 60 - 7 * c3BarW) / 6);
+    const c3StartX = leftX + 30;
+
+    for (let i = 0; i < 7; i++) {
+      const val = rollingData.dailyValues[i];
+      const bx = c3StartX + i * (c3BarW + c3Gap);
+      const isToday = (i === 6);
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, c3BottomY - c3MaxBarH, c3BarW, c3MaxBarH, c3BarW / 2);
+      else ctx.rect(bx, c3BottomY - c3MaxBarH, c3BarW, c3MaxBarH);
+      ctx.fill();
+
+      if (val > 0) {
+        const h = Math.min((val / c3MaxVal) * c3MaxBarH, c3MaxBarH);
+        const fillGrad = ctx.createLinearGradient(bx, c3BottomY - h, bx, c3BottomY);
+        fillGrad.addColorStop(0, '#FC4C02');
+        fillGrad.addColorStop(1, '#3B82F6');
+
+        ctx.fillStyle = fillGrad;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, c3BottomY - h, c3BarW, h, c3BarW / 2);
+        else ctx.rect(bx, c3BottomY - h, c3BarW, h);
+        ctx.fill();
+
+        ctx.font = 'bold 20px ' + fontSans;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🏃', bx + c3BarW / 2, c3BottomY - Math.max(h / 2, 18));
+
+        ctx.fillStyle = isToday ? '#FFD700' : '#FFFFFF';
+        ctx.font = 'bold 18px ' + fontSans;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(val.toFixed(1), bx + c3BarW / 2, c3BottomY - h - 4);
+      }
+
+      ctx.fillStyle = isToday ? '#FC4C02' : 'rgba(255, 255, 255, 0.85)';
+      ctx.font = 'bold 20px ' + fontSans;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(rollingData.weekdayLabels[i], bx + c3BarW / 2, c3BottomY + 8);
+
+      ctx.fillStyle = isToday ? '#FC4C02' : 'rgba(255, 255, 255, 0.55)';
+      ctx.font = isToday ? 'bold 18px ' + fontSans : '500 16px ' + fontSans;
+      ctx.fillText(rollingData.dayNumbers[i], bx + c3BarW / 2, c3BottomY + 34);
+    }
+
+    // CARD 4: 4 LATEST WORKOUT LOGS
+    const card4Y = card3Y + card3H + 20;
+    const athleteWorkouts = getWorkoutsForAthlete(
+      athleteName, 
+      distVal, 
+      0, 
+      sportType, 
+      0, 
+      (currentMonthWorkoutLogs && currentMonthWorkoutLogs.length > 0) ? currentMonthWorkoutLogs : rawWorkoutLogs
+    );
+    athleteWorkouts.sort((a, b) => {
+      if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) return b.first_seen - a.first_seen;
+      return parseThaiDate(b.date) - parseThaiDate(a.date);
+    });
+
+    const top4Workouts = athleteWorkouts.slice(0, 4);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`บันทึกกิจกรรมล่าสุด (${athleteWorkouts.length} ครั้ง)`, leftX, card4Y);
+
+    top4Workouts.forEach((w, idx) => {
+      const wY = card4Y + 40 + idx * 80;
+      const wH = 68;
+
+      if (!isTransparentBG) {
+        ctx.fillStyle = 'rgba(10, 15, 24, 0.65)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(leftX, wY, boxW, wH, 16);
+        else ctx.rect(leftX, wY, boxW, wH);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.stroke();
+      }
+
+      const wIcon = w.sport_type === 'Run' || w.sport_type === 'TrailRun' || w.sport_type === 'VirtualRun' ? '🏃' : w.sport_type === 'Walk' ? '🚶' : w.sport_type === 'Ride' ? '🚴' : '⚡';
+
+      // Left: Icon + Name + Date
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${wIcon}  ${w.name}`, leftX + 20, wY + 12);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.font = '500 18px ' + fontSans;
+      ctx.fillText(translateDateToEn(w.date), leftX + 54, wY + 40);
+
+      // Right: Metric
+      const distStr = ['Run', 'TrailRun', 'VirtualRun', 'Walk'].includes(w.sport_type) ? `${w.dist_km.toFixed(1)} km` : formatDuration(w.moving_time);
+      const timeSubStr = formatDuration(w.moving_time);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillText(distStr, rightX - 20, wY + 12);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.font = '500 18px ' + fontSans;
+      ctx.fillText(timeSubStr, rightX - 20, wY + 40);
+    });
+  } else if (template === 'framed') {
+    // ==========================================
+    // TEMPLATE 6: FRAMED PHOTO & OPEN HERO STATS
+    // ==========================================
+    if (ratio === '16:9') {
+      const frameX = 60;
+      const frameY = 60;
+      const frameW = 1040;
+      const frameH = 960;
+
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(frameX, frameY, frameW, frameH, 32);
+      else ctx.rect(frameX, frameY, frameW, frameH);
+      ctx.clip();
+
+      if (bgImage) {
+        const frameAspect = frameW / frameH;
+        const imgAspect = bgImage.width / bgImage.height;
+        const sliderVal = (window.currentShareData && window.currentShareData.sliderValue !== undefined) ? window.currentShareData.sliderValue : 50;
+        
+        let sx = 0, sy = 0, sWidth = bgImage.width, sHeight = bgImage.height;
+        if (imgAspect > frameAspect) {
+          sWidth = bgImage.height * frameAspect;
+          sHeight = bgImage.height;
+          sx = (bgImage.width - sWidth) * (sliderVal / 100);
+        } else {
+          sWidth = bgImage.width;
+          sHeight = bgImage.width / frameAspect;
+          sy = (bgImage.height - sHeight) * (sliderVal / 100);
+        }
+        ctx.drawImage(bgImage, sx, sy, sWidth, sHeight, frameX, frameY, frameW, frameH);
+      } else {
+        const innerGrad = ctx.createLinearGradient(frameX, frameY, frameX + frameW, frameY + frameH);
+        innerGrad.addColorStop(0, '#1e293b');
+        innerGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = innerGrad;
+        ctx.fillRect(frameX, frameY, frameW, frameH);
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.font = 'bold 32px ' + fontSans;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('📸 เลือกรูปภาพของคุณตรงนี้', frameX + frameW / 2, frameY + frameH / 2);
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(frameX, frameY, frameW, frameH, 32);
+      else ctx.rect(frameX, frameY, frameW, frameH);
+      ctx.stroke();
+
+      const statX = 1160;
+      const statW = sizeW - statX - 60;
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 36px ' + fontSans;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('Pixme Run Club', statX, 70);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.font = 'bold 20px ' + fontSans;
+      ctx.fillText('Shut up !!! ,,, and Run …,,,', statX, 115);
+
+      ctx.fillStyle = '#FC4C02';
+      ctx.font = 'bold 32px ' + fontSans;
+      ctx.textAlign = 'right';
+      ctx.fillText(athleteName, sizeW - 60, 70);
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(statX, 155);
+      ctx.lineTo(sizeW - 60, 155);
+      ctx.stroke();
+
+      const metricY = 210;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`🎯 TARGET PROGRESS (${formatMonthShort(selectedMonth)})`, statX, metricY);
+
+      ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+      ctx.font = 'bold 115px ' + fontSans;
+      ctx.fillText(`${progressPercent.toFixed(0)}%`, statX, metricY + 35);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.font = 'bold 32px ' + fontSans;
+      ctx.fillText(`${distVal.toFixed(1)} / 100 KM`, statX, metricY + 165);
+
+      const distMetricY = 460;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.fillText('🏃 WORKOUT DISTANCE', statX, distMetricY);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 115px ' + fontSans;
+      ctx.fillText(distanceKm.toFixed(2), statX, distMetricY + 35);
+
+      const dWidth = ctx.measureText(distanceKm.toFixed(2)).width;
+      ctx.fillStyle = '#FC4C02';
+      ctx.font = 'bold 44px ' + fontSans;
+      ctx.fillText('KM', statX + dWidth + 16, distMetricY + 95);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.font = 'bold 30px ' + fontSans;
+      ctx.fillText(`${emoji} ${activityName}  •  ⏱️ ${timeStr}`, statX, distMetricY + 165);
+
+      const barY = 740;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(statX, barY, statW, 24, 12);
+      else ctx.rect(statX, barY, statW, 24);
+      ctx.fill();
+
+      if (progressPercent > 0) {
+        const fillW = statW * (progressPercent / 100);
+        const fillGrad = ctx.createLinearGradient(statX, barY, statX + fillW, barY);
+        fillGrad.addColorStop(0, distVal >= 100 ? '#FFD700' : '#fc4c02');
+        fillGrad.addColorStop(1, distVal >= 100 ? '#FFA500' : '#ff7a00');
+        ctx.fillStyle = fillGrad;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(statX, barY, fillW, 24, 12);
+        else ctx.rect(statX, barY, fillW, 24);
+        ctx.fill();
+      }
+
+      const pillY = 800;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(statX, pillY, statW, 52, 26);
+      else ctx.rect(statX, pillY, statW, 52);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 24px ' + fontSans;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(statusMsg, statX + statW / 2, pillY + 26);
+
+    } else {
+      const frameX = 50;
+      const frameY = 140;
+      const frameW = sizeW - 100;
+      const frameH = ratio === '9:16' ? 950 : ratio === '4:5' ? 620 : 450;
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 36px ' + fontSans;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText('Pixme Run Club', 50, 50);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.font = 'bold 20px ' + fontSans;
+      ctx.fillText('Shut up !!! ,,, and Run …,,,', 50, 95);
+
+      ctx.fillStyle = '#FC4C02';
+      ctx.font = 'bold 32px ' + fontSans;
+      ctx.textAlign = 'right';
+      ctx.fillText(athleteName, sizeW - 50, 50);
+
+      ctx.save();
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(frameX, frameY, frameW, frameH, 28);
+      else ctx.rect(frameX, frameY, frameW, frameH);
+      ctx.clip();
+
+      if (bgImage) {
+        const frameAspect = frameW / frameH;
+        const imgAspect = bgImage.width / bgImage.height;
+        const sliderVal = (window.currentShareData && window.currentShareData.sliderValue !== undefined) ? window.currentShareData.sliderValue : 50;
+        
+        let sx = 0, sy = 0, sWidth = bgImage.width, sHeight = bgImage.height;
+        if (imgAspect > frameAspect) {
+          sWidth = bgImage.height * frameAspect;
+          sHeight = bgImage.height;
+          sx = (bgImage.width - sWidth) * (sliderVal / 100);
+        } else {
+          sWidth = bgImage.width;
+          sHeight = bgImage.width / frameAspect;
+          sy = (bgImage.height - sHeight) * (sliderVal / 100);
+        }
+        ctx.drawImage(bgImage, sx, sy, sWidth, sHeight, frameX, frameY, frameW, frameH);
+      } else {
+        const innerGrad = ctx.createLinearGradient(frameX, frameY, frameX + frameW, frameY + frameH);
+        innerGrad.addColorStop(0, '#1e293b');
+        innerGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = innerGrad;
+        ctx.fillRect(frameX, frameY, frameW, frameH);
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.font = 'bold 32px ' + fontSans;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('📸 เลือกรูปภาพของคุณตรงนี้', frameX + frameW / 2, frameY + frameH / 2);
+      }
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(frameX, frameY, frameW, frameH, 28);
+      else ctx.rect(frameX, frameY, frameW, frameH);
+      ctx.stroke();
+
+      const statsY = frameY + frameH + 30;
+
+      ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+      ctx.font = `bold ${ratio === '9:16' ? 110 : 90}px ${fontSans}`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${progressPercent.toFixed(0)}%`, 50, statsY);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.fillText(`TARGET (${distVal.toFixed(1)}/100K)`, 50, statsY + (ratio === '9:16' ? 120 : 95));
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${ratio === '9:16' ? 110 : 90}px ${fontSans}`;
+      ctx.textAlign = 'right';
+      ctx.fillText(`${distanceKm.toFixed(2)}`, sizeW - 50, statsY);
+
+      ctx.fillStyle = '#FC4C02';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.fillText(`KM (${emoji} ${activityName})`, sizeW - 50, statsY + (ratio === '9:16' ? 120 : 95));
+
+      const barY = statsY + (ratio === '9:16' ? 175 : 145);
+      const barW = sizeW - 100;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(50, barY, barW, 20, 10);
+      else ctx.rect(50, barY, barW, 20);
+      ctx.fill();
+
+      if (progressPercent > 0) {
+        const fillW = barW * (progressPercent / 100);
+        const fillGrad = ctx.createLinearGradient(50, barY, 50 + fillW, barY);
+        fillGrad.addColorStop(0, distVal >= 100 ? '#FFD700' : '#fc4c02');
+        fillGrad.addColorStop(1, distVal >= 100 ? '#FFA500' : '#ff7a00');
+        ctx.fillStyle = fillGrad;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(50, barY, fillW, 20, 10);
+        else ctx.rect(50, barY, fillW, 20);
+        ctx.fill();
+      }
+
+      const bottomRowY = barY + 36;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(translateDateToEn(dateStr) + `  •  ⏱️ ${timeStr}`, 50, bottomRowY);
+
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 22px ' + fontSans;
+      ctx.textAlign = 'right';
+      ctx.fillText(statusMsg, sizeW - 50, bottomRowY);
+    }
+  } else {
+    // ==========================================
+    // TEMPLATE 1: CLASSIC (DEFAULT)
+    // ==========================================
+    const topY = ratio === '1:1' ? 85 : 70;
+    const leftX = 60;
+    const rightX = sizeW - 60;
+
+    // Header Top Left: Club Header + 2-Line Activity Info below
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 38px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('Pixme Run Club', leftX, topY);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 48);
+
+    // 2-Line Activity Info under title
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 28px ' + fontSans;
+    ctx.fillText(`${emoji} ${activityName}`, leftX, topY + 95);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = '500 24px ' + fontSans;
+    ctx.fillText(`📅 ${translateDateToEn(dateStr)}   ⏱️ ${timeStr} (${distanceKm.toFixed(2)} KM)`, leftX, topY + 135);
+
+    // Header Top Right: Athlete Profile Name
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 34px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(athleteName, rightX, topY);
+
+    ctx.shadowBlur = 0;
+
+    const barY = sizeH - (sizeH > 1400 ? 340 : 270);
+    const barWidth = sizeW - 120;
+    const barHeight = 24;
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = 'bold 24px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`🎯 MONTHLY TARGET PROGRESS (${formatMonthShort(selectedMonth)})`, 60, barY - 15);
+    
+    ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+    ctx.font = 'bold 26px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.fillText(`${distVal.toFixed(1)} / 100 KM (${progressPercent.toFixed(0)}%)`, sizeW - 60, barY - 15);
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(60, barY, barWidth, barHeight, 12);
+    else ctx.rect(60, barY, barWidth, barHeight);
+    ctx.fill();
+    
+    if (progressPercent > 0) {
+      const fillGrad = ctx.createLinearGradient(60, barY, 60 + barWidth * (progressPercent / 100), barY);
+      if (distVal >= 100) {
+        fillGrad.addColorStop(0, '#FFD700');
+        fillGrad.addColorStop(1, '#FFA500');
+      } else if (distVal >= 80) {
+        fillGrad.addColorStop(0, '#00C6FF');
+        fillGrad.addColorStop(1, '#0072FF');
+      } else {
+        fillGrad.addColorStop(0, '#fc4c02');
+        fillGrad.addColorStop(1, '#ff7a00');
+      }
+      ctx.fillStyle = fillGrad;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(60, barY, barWidth * (progressPercent / 100), barHeight, 12);
+      else ctx.rect(60, barY, barWidth * (progressPercent / 100), barHeight);
+      ctx.fill();
+    }
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 52px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`${emoji} ${activityName}`, 60, sizeH - 120);
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.font = '500 28px ' + fontSans;
+    ctx.fillText(translateDateToEn(dateStr), 60, sizeH - 70);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 120px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(distanceKm.toFixed(2), sizeW - 120, sizeH - 110);
+    
+    ctx.fillStyle = '#FC4C02';
+    ctx.font = 'bold 36px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.fillText('KM', sizeW - 110, sizeH - 120);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 36px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.fillText(`⏱️ ${timeStr}`, sizeW - 60, sizeH - 70);
   }
-  
-  // 5. Draw Activity Details (Bottom Left)
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 52px ' + fontSans;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'bottom';
-  
-  // Clean sport emoji prefix
-  const emoji = sportType === 'Run' || sportType === 'TrailRun' || sportType === 'VirtualRun' ? '🏃' : sportType === 'Walk' ? '🚶' : sportType === 'Ride' ? '🚴' : '💪';
-  ctx.fillText(`${emoji} ${activityName}`, 60, size - 120);
-  
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-  ctx.font = '500 28px ' + fontSans;
-  ctx.fillText(translateDateToEn(dateStr), 60, size - 70);
-  
-  // 6. Draw Workout Stats (Bottom Right)
-  // Distance
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 120px ' + fontSans;
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'bottom';
-  ctx.fillText(distanceKm.toFixed(2), size - 120, size - 110);
-  
-  ctx.fillStyle = '#FC4C02';
-  ctx.font = 'bold 36px ' + fontSans;
-  ctx.textAlign = 'left';
-  ctx.fillText('KM', size - 110, size - 120);
-  
-  // Time
-  const timeStr = formatDuration(movingTimeSec);
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 36px ' + fontSans;
-  ctx.textAlign = 'right';
-  ctx.fillText(timeStr, size - 60, size - 70);
 }
 
 function downloadGeneratedGraphic(athleteName) {

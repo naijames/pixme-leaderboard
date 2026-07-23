@@ -1606,18 +1606,103 @@ body::-webkit-scrollbar {
   line-height: 1;
 }
 
-.share-modal-body {
-  padding: 20px;
+.share-template-selector {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  overflow-y: auto;
+  gap: 8px;
+  width: 100%;
+  overflow-x: auto;
+  padding: 4px 2px 8px 2px;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.share-template-selector::-webkit-scrollbar {
+  height: 4px;
+}
+
+.share-template-selector::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.template-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.template-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.template-pill.active {
+  background: var(--color-orange);
+  border-color: var(--color-orange);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(252, 76, 2, 0.45);
+}
+
+.share-ratio-selector {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  overflow-x: auto;
+  padding: 2px 2px 6px 2px;
+  justify-content: flex-start;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.share-ratio-selector::-webkit-scrollbar {
+  height: 4px;
+}
+
+.share-ratio-selector::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.ratio-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ratio-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.ratio-pill.active {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: #fff;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
 }
 
 .canvas-preview-container {
   position: relative;
   width: 100%;
+  max-height: 420px;
   aspect-ratio: 1/1;
   border-radius: 12px;
   overflow: hidden;
@@ -1627,6 +1712,7 @@ body::-webkit-scrollbar {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: aspect-ratio 0.3s ease;
 }
 
 .share-preview-img {
