@@ -1203,58 +1203,106 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
     <div class="share-modal-backdrop" onclick="closeShareOverlay()"></div>
     <div class="share-modal-content">
       <div class="share-modal-header">
-        <h4>สร้างรูปสรุปกิจกรรม</h4>
-        <button class="share-modal-close" onclick="closeShareOverlay()">&times;</button>
+        <div class="share-modal-title-group">
+          <span class="share-modal-eyebrow">PIXME ACTIVE CLUB</span>
+          <h4>สร้างรูปและสติกเกอร์สถิติ</h4>
+        </div>
+        <button class="share-modal-close" onclick="closeShareOverlay()" aria-label="ปิดหน้าต่างสร้างรูปสรุป">&times;</button>
       </div>
       <div class="share-modal-body">
-        <div class="share-options-bar" style="display: flex; flex-direction: column; gap: 8px; width: 100%; margin-bottom: 6px;">
-          <div class="share-template-selector">
-            <button class="template-pill active" onclick="selectShareTemplate('classic', event)">🏆 คลาสสิก</button>
-            <button class="template-pill" onclick="selectShareTemplate('minimal', event)">⚡ มินิมอล (Nike/Strava)</button>
-            <button class="template-pill" onclick="selectShareTemplate('stamp', event)">🏷️ ตราประทับสปอร์ต</button>
-            <button class="template-pill" onclick="selectShareTemplate('monthly', event)">🎯 เป้าหมายเดือน</button>
-            <button class="template-pill" onclick="selectShareTemplate('weekly', event)">📊 กราฟ 7 วัน</button>
-            <button class="template-pill" onclick="selectShareTemplate('profile', event)">📱 สรุปโปรไฟล์</button>
-            <button class="template-pill" onclick="selectShareTemplate('framed', event)">🖼️ กรอบรูป & สถิติเด่น</button>
+        <div class="share-mode-switcher">
+          <button class="share-mode-btn active" id="mode-btn-graphic" onclick="switchShareMode('graphic')">🎨 รูปภาพรวม (Full Graphic)</button>
+          <button class="share-mode-btn" id="mode-btn-stickers" onclick="switchShareMode('stickers')">📦 สติกเกอร์แยกชิ้น (PNG โปร่งใส)</button>
+        </div>
+
+        <!-- VIEW 1: FULL GRAPHIC OVERLAY -->
+        <div id="share-view-graphic" class="share-view-panel">
+          <div class="share-options-bar">
+            <div class="share-option-heading"><span>เลือกรูปแบบ</span><small>แตะเพื่อดูตัวอย่าง</small></div>
+            <div class="share-template-selector">
+              <button class="template-pill active" onclick="selectShareTemplate('classic', event)">🏆 คลาสสิก</button>
+              <button class="template-pill" onclick="selectShareTemplate('minimal', event)">⚡ Editorial</button>
+              <button class="template-pill" onclick="selectShareTemplate('stamp', event)">🏷️ Activity Stamp</button>
+              <button class="template-pill" onclick="selectShareTemplate('monthly', event)">🎯 Monthly Milestone</button>
+              <button class="template-pill" onclick="selectShareTemplate('weekly', event)">📊 Week in Motion</button>
+              <button class="template-pill" onclick="selectShareTemplate('profile', event)">📱 Athlete Snapshot</button>
+              <button class="template-pill" onclick="selectShareTemplate('framed', event)">🖼️ Photo Feature</button>
+              <button class="template-pill" onclick="selectShareTemplate('poster', event)">✦ Pace Poster</button>
+              <button class="template-pill" onclick="selectShareTemplate('split', event)">◫ Split Metric</button>
+              <button class="template-pill" onclick="selectShareTemplate('orbit', event)">◎ Orbit</button>
+              <button class="template-pill" onclick="selectShareTemplate('grid', event)">▦ Grid Notes</button>
+              <button class="template-pill" onclick="selectShareTemplate('ribbon', event)">⌁ Ribbon</button>
+              <button class="template-pill" onclick="selectShareTemplate('track', event)">◌ Track Line</button>
+              <button class="template-pill" onclick="selectShareTemplate('journal', event)">▤ Run Journal</button>
+              <button class="template-pill" onclick="selectShareTemplate('wave', event)">〰 Wave</button>
+              <button class="template-pill" onclick="selectShareTemplate('mono', event)">◐ Mono</button>
+              <button class="template-pill" onclick="selectShareTemplate('scoreboard', event)">▣ Scoreboard</button>
+              <button class="template-pill" onclick="selectShareTemplate('ticket', event)">✦ Run Ticket</button>
+            </div>
+            <div class="share-option-heading share-option-heading--ratio"><span>ขนาดภาพ</span><small>พร้อมแชร์ได้ทันที</small></div>
+            <div class="share-ratio-selector">
+              <button class="ratio-pill active" onclick="selectShareRatio('1:1', event)">🔳 1:1</button>
+              <button class="ratio-pill" onclick="selectShareRatio('4:5', event)">📱 4:5 แนวตั้ง</button>
+              <button class="ratio-pill" onclick="selectShareRatio('9:16', event)">📲 9:16 สตอรี่</button>
+              <button class="ratio-pill" onclick="selectShareRatio('16:9', event)">🖼️ 16:9 แนวนอน</button>
+            </div>
           </div>
-          <div class="share-ratio-selector">
-            <button class="ratio-pill active" onclick="selectShareRatio('1:1', event)">🔳 1:1</button>
-            <button class="ratio-pill" onclick="selectShareRatio('4:5', event)">📱 4:5 แนวตั้ง</button>
-            <button class="ratio-pill" onclick="selectShareRatio('9:16', event)">📲 9:16 สตอรี่</button>
-            <button class="ratio-pill" onclick="selectShareRatio('16:9', event)">🖼️ 16:9 แนวนอน</button>
+
+          <div class="canvas-preview-container">
+            <canvas id="share-canvas" style="display:none;"></canvas>
+            <img id="share-image-preview" alt="Preview Image" class="share-preview-img" />
+            <div id="canvas-loading" class="canvas-loader hidden">กำลังประมวลผล...</div>
+          </div>
+          
+          <div class="share-controls">
+            <div class="share-control-row">
+              <label class="custom-file-upload">
+                <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" />
+                <span>📸 เลือกรูปภาพประกอบ</span>
+              </label>
+              <label class="transparent-bg-toggle">
+                <input type="checkbox" id="transparent-bg-checkbox" onchange="toggleTransparentBG(event)" />
+                <span>พื้นหลังโปร่งใส</span>
+              </label>
+            </div>
+            
+            <div class="share-slider-container hidden" id="photo-slider-wrapper">
+              <label for="share-photo-slider">
+                ↔️ เลื่อนปรับตำแหน่งรูปภาพ (ซ้าย-ขวา / บน-ล่าง)
+              </label>
+              <input type="range" id="share-photo-slider" min="0" max="100" value="50" oninput="handleSharePhotoSliderInput(event)" />
+            </div>
           </div>
         </div>
 
-        <div class="canvas-preview-container">
-          <canvas id="share-canvas" style="display:none;"></canvas>
-          <img id="share-image-preview" alt="Preview Image" class="share-preview-img" />
-          <div id="canvas-loading" class="canvas-loader hidden">กำลังประมวลผล...</div>
-        </div>
-        
-        <div class="share-controls" style="display: flex; flex-direction: column; align-items: center; width: 100%; gap: 10px;">
-          <div style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; width: 100%;">
-            <label class="custom-file-upload">
-              <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" />
-              <span>📸 เลือกรูปภาพประกอบ</span>
-            </label>
-            <label class="transparent-bg-toggle" style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; color: #fff; cursor: pointer; background: rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.18);">
-              <input type="checkbox" id="transparent-bg-checkbox" onchange="toggleTransparentBG(event)" style="accent-color: var(--color-orange); width: 16px; height: 16px; cursor: pointer;" />
-              <span>🔲 พื้นหลังโปร่งใส (Transparent PNG)</span>
-            </label>
-          </div>
-          
-          <div class="share-slider-container hidden" id="photo-slider-wrapper" style="width: 100%; margin-top: 10px; text-align: center;">
-            <label for="share-photo-slider" style="display: block; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">
-              ↔️ เลื่อนปรับตำแหน่งรูปภาพ (ซ้าย-ขวา / บน-ล่าง)
-            </label>
-            <input type="range" id="share-photo-slider" min="0" max="100" value="50" style="width: 100%; accent-color: var(--color-orange); cursor: pointer;" oninput="handleSharePhotoSliderInput(event)" />
+        <!-- VIEW 2: STICKER PACK / MODULAR ASSETS -->
+        <div id="share-view-stickers" class="share-view-panel hidden">
+          <div class="stickers-container">
+            <div class="stickers-batch-bar">
+              <span id="stickers-selected-count">เลือกแล้ว 7/7 ชิ้น</span>
+              <div class="stickers-batch-actions">
+                <button class="sticker-select-all-btn" onclick="toggleAllStickers(true)">เลือกทั้งหมด</button>
+                <button class="sticker-select-all-btn" onclick="toggleAllStickers(false)">ยกเลิกทั้งหมด</button>
+              </div>
+            </div>
+
+            <div class="stickers-grid" id="stickers-grid-container">
+              <!-- Sticker cards rendered dynamically by renderAllStickers() -->
+            </div>
           </div>
         </div>
       </div>
+
       <div class="share-modal-footer">
-        <button id="download-graphic-btn" class="share-btn download-btn" onclick="downloadGeneratedGraphic('${athleteName}')">📥 ดาวน์โหลดรูปภาพ</button>
-        <button id="share-graphic-btn" class="share-btn share-action-btn" onclick="shareGeneratedGraphic('${athleteName}')">📤 แชร์ไปยังแอปอื่น</button>
-        <p class="share-modal-tip">💡 ทิป: บนมือถือสามารถกดค้างที่รูปภาพด้านบนเพื่อบันทึกหรือคัดลอกได้เช่นกัน</p>
+        <div id="footer-actions-graphic" style="display:contents;">
+          <button id="download-graphic-btn" class="share-btn download-btn" onclick="downloadGeneratedGraphic('${athleteName}')">📥 ดาวน์โหลดรูปภาพ</button>
+          <button id="share-graphic-btn" class="share-btn share-action-btn" onclick="shareGeneratedGraphic('${athleteName}')">📤 แชร์ไปยังแอปอื่น</button>
+        </div>
+        <div id="footer-actions-stickers" class="hidden" style="display:none; grid-column: 1 / -1; width: 100%; display: flex; gap: 8px;">
+          <button id="stickers-download-btn" class="share-btn download-btn" style="flex:1.5;" onclick="downloadSelectedStickers('${athleteName}')">📥 ดาวน์โหลดที่เลือก (Multi-Export PNG)</button>
+          <button id="stickers-share-btn" class="share-btn share-action-btn" style="flex:1;" onclick="shareSelectedStickers('${athleteName}')">📤 แชร์สติกเกอร์</button>
+        </div>
+        <p class="share-modal-tip" id="share-modal-tip-text">💡 ทิป: บนมือถือสามารถกดค้างที่รูปภาพหรือสติกเกอร์เพื่อบันทึกหรือคัดลอกได้เช่นกัน</p>
       </div>
     </div>
   `;
@@ -1442,6 +1490,187 @@ function get7DayRollingData(athleteName) {
   return { weekdayLabels, dayNumbers, dailyValues };
 }
 
+// The modern share collection intentionally does not reuse the legacy layouts.
+// Classic remains below as a stable, unchanged option.
+function drawModernShareTemplate(ctx, template, sizeW, sizeH, bgImage, data) {
+  const { athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType, ratio, isTransparentBG, distVal, progressPercent } = data;
+  const font = 'system-ui, -apple-system, sans-serif';
+  const margin = Math.round(Math.min(sizeW, sizeH) * 0.065);
+  const radius = Math.round(Math.min(sizeW, sizeH) * 0.028);
+  const time = formatDuration(movingTimeSec);
+  const icon = ['Run', 'TrailRun', 'VirtualRun'].includes(sportType) ? 'RUN' : sportType === 'Walk' ? 'WALK' : sportType === 'Ride' ? 'RIDE' : 'MOVE';
+  const isWide = ratio === '16:9';
+  const rr = (x, y, w, h, r = radius) => { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); };
+  const text = (value, x, y, size, color = '#fff', align = 'left', weight = 700) => { ctx.fillStyle = color; ctx.font = `${weight} ${size}px ${font}`; ctx.textAlign = align; ctx.textBaseline = 'top'; ctx.fillText(value, x, y); };
+
+  ctx.clearRect(0, 0, sizeW, sizeH);
+  const palettes = {
+    minimal: ['#f5f2ea', '#ddd7ce'], stamp: ['#10212b', '#173d45'], monthly: ['#101a2b', '#254a63'],
+    weekly: ['#111827', '#1f3558'], profile: ['#211533', '#4b2c68'], framed: ['#121316', '#242833'], poster: ['#371338', '#e75739'],
+    split: ['#0b1720', '#22727a'], orbit: ['#15142a', '#4a3671'], grid: ['#122016', '#38634a'], ribbon: ['#281513', '#9d3c2d'],
+    track: ['#0e1b2c', '#23617a'], journal: ['#e9dfcf', '#c6b298'], wave: ['#10212d', '#246a81'], mono: ['#202020', '#5a5a5a'],
+    scoreboard: ['#171b23', '#3c4d62'], ticket: ['#241819', '#a95b38']
+  };
+  if (isTransparentBG) {
+    ctx.clearRect(0, 0, sizeW, sizeH);
+  } else if (bgImage) {
+    const sourceRatio = bgImage.width / bgImage.height;
+    const targetRatio = sizeW / sizeH;
+    let sx = 0, sy = 0, sw = bgImage.width, sh = bgImage.height;
+    const sliderValue = window.currentShareData && window.currentShareData.sliderValue !== undefined
+      ? window.currentShareData.sliderValue
+      : 50;
+    const slider = sliderValue / 100;
+    if (sourceRatio > targetRatio) { sw = bgImage.height * targetRatio; sx = (bgImage.width - sw) * slider; }
+    else { sh = bgImage.width / targetRatio; sy = (bgImage.height - sh) * slider; }
+    ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, sizeW, sizeH);
+    // Keep a user photo bright. This is only a light contrast veil, not a dark panel.
+    const shade = ctx.createLinearGradient(0, 0, sizeW, sizeH);
+    shade.addColorStop(0, 'rgba(5, 8, 15, 0.28)'); shade.addColorStop(0.5, 'rgba(5, 8, 15, 0.04)'); shade.addColorStop(1, 'rgba(5, 8, 15, 0.2)');
+    ctx.fillStyle = shade; ctx.fillRect(0, 0, sizeW, sizeH);
+  } else {
+    const palette = palettes[template] || palettes.minimal;
+    const bg = ctx.createLinearGradient(0, 0, sizeW, sizeH);
+    bg.addColorStop(0, palette[0]); bg.addColorStop(1, palette[1]); ctx.fillStyle = bg; ctx.fillRect(0, 0, sizeW, sizeH);
+  }
+
+  // Shared identity line, deliberately different from the old top-header layout.
+  const photoMode = Boolean(bgImage && !isTransparentBG);
+  const ink = template === 'minimal' && !photoMode ? '#161616' : '#fff';
+  const muted = template === 'minimal' ? 'rgba(22,22,22,.6)' : 'rgba(255,255,255,.66)';
+  text('PIXME ACTIVE CLUB', margin, margin, 18, muted, 'left', 800);
+  text(athleteName.toUpperCase(), sizeW - margin, margin, 18, ink, 'right', 800);
+
+  if (template === 'minimal') {
+    text(icon, margin, sizeH * 0.29, 22, '#fc4c02', 'left', 900);
+    text(distanceKm.toFixed(2), margin, sizeH * 0.35, isWide ? 230 : 185, ink, 'left', 900);
+    text('KM', margin, sizeH * 0.35 + (isWide ? 220 : 180), 30, '#fc4c02', 'left', 900);
+    text(activityName.toUpperCase(), margin, sizeH - margin * 2.5, 30, ink, 'left', 800);
+    text(`${translateDateToEn(dateStr)}  ·  ${time}`, margin, sizeH - margin * 1.55, 19, muted, 'left', 650);
+    ctx.fillStyle = '#fc4c02'; ctx.fillRect(sizeW - margin - 26, sizeH - margin - 26, 26, 26);
+  } else if (template === 'stamp') {
+    // A compact seal sits in a corner instead of covering the photo's subject.
+    const outer = Math.min(sizeW, sizeH) * 0.2;
+    const cX = sizeW - margin - outer, cY = sizeH - margin - outer;
+    ctx.strokeStyle = '#f8c98b'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cX, cY, outer, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(248,201,139,.55)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cX, cY, outer - 24, 0, Math.PI * 2); ctx.stroke();
+    text('ACTIVITY', cX, cY - outer * .58, 21, '#f8c98b', 'center', 900);
+    text(distanceKm.toFixed(2), cX, cY - 50, 76, '#fff', 'center', 900);
+    text('KILOMETRES', cX, cY + 34, 15, '#f8c98b', 'center', 900);
+    text(icon, cX, cY + 63, 17, '#fff', 'center', 800);
+  } else if (template === 'monthly') {
+    const cardH = sizeH * .28, cardY = sizeH - margin - cardH, cardW = sizeW - margin * 2;
+    ctx.fillStyle = photoMode ? 'rgba(7,14,24,.22)' : 'rgba(7,14,24,.74)'; rr(margin, cardY, cardW, cardH); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; rr(margin, cardY, cardW, cardH); ctx.stroke();
+    text('MONTHLY DISTANCE', margin * 1.55, cardY + margin, 20, muted, 'left', 800);
+    text(`${progressPercent.toFixed(0)}%`, sizeW - margin * 1.55, cardY + margin, 23, '#7ee8e1', 'right', 900);
+    text(`${distVal.toFixed(1)}`, margin * 1.55, cardY + margin * 1.5, isWide ? 92 : 78, '#fff', 'left', 900);
+    text('/ 100 KM', margin * 1.55, cardY + margin * 1.5 + (isWide ? 94 : 80), 19, muted, 'left', 800);
+    const barX = margin * 1.55, barY = cardY + cardH - margin * .9, barW = cardW - margin * 1.1;
+    ctx.fillStyle = 'rgba(255,255,255,.13)'; rr(barX, barY, barW, 18, 9); ctx.fill();
+    ctx.fillStyle = '#70e1d7'; rr(barX, barY, Math.max(8, barW * progressPercent / 100), 18, 9); ctx.fill();
+    text(`${activityName}  ·  ${distanceKm.toFixed(2)} km today`, margin * 1.55, barY - 38, 18, '#fff', 'left', 700);
+  } else if (template === 'weekly') {
+    text('SEVEN DAYS', margin, sizeH * .15, 34, ink, 'left', 900);
+    text('DISTANCE RHYTHM', margin, sizeH * .19 + 50, 18, muted, 'left', 800);
+    const rolling = get7DayRollingData(athleteName); const max = Math.max(...rolling.dailyValues, 1); const chartY = sizeH - margin * 1.55;
+    const width = sizeW - margin * 2; const step = width / 7; const barW = step * .52;
+    for (let i = 0; i < 7; i++) {
+      const maxH = sizeH * .24; const h = Math.max(8, (rolling.dailyValues[i] / max) * maxH); const x = margin + i * step + (step - barW) / 2;
+      ctx.fillStyle = photoMode ? 'rgba(255,255,255,.09)' : 'rgba(255,255,255,.12)'; rr(x, chartY - maxH, barW, maxH, barW / 2); ctx.fill();
+      ctx.fillStyle = i === 6 ? '#ffcb72' : '#78c8ff'; rr(x, chartY - h, barW, h, barW / 2); ctx.fill();
+      text(rolling.weekdayLabels[i], x + barW / 2, chartY + 22, 18, muted, 'center', 800);
+      text(rolling.dailyValues[i] ? rolling.dailyValues[i].toFixed(1) : '–', x + barW / 2, chartY - h - 30, 16, ink, 'center', 800);
+    }
+  } else if (template === 'profile') {
+    text('ATHLETE / SUMMARY', margin, sizeH * .18, 34, ink, 'left', 900);
+    const y = sizeH * .58, gap = margin * .32, w = (sizeW - margin * 2 - gap) / 2, h = sizeH * .12;
+    const stat = (x, yy, label, value, accent) => { ctx.fillStyle = photoMode ? 'rgba(15,12,25,.2)' : 'rgba(15,12,25,.66)'; rr(x, yy, w, h); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 1; rr(x, yy, w, h); ctx.stroke(); text(label, x + 20, yy + 16, 13, muted, 'left', 800); text(value, x + 20, yy + 42, 34, accent, 'left', 900); };
+    stat(margin, y, 'MONTHLY KM', distVal.toFixed(1), '#cbb2ff'); stat(margin + w + gap, y, 'GOAL', `${progressPercent.toFixed(0)}%`, '#ffb476');
+    stat(margin, y + h + gap, 'TODAY', distanceKm.toFixed(2), '#fff'); stat(margin + w + gap, y + h + gap, 'TIME', time, '#9fe3ff');
+    text(`${icon}  ${activityName.toUpperCase()}`, margin, sizeH - margin * 2.1, 25, ink, 'left', 800);
+    text(translateDateToEn(dateStr), margin, sizeH - margin * 1.35, 18, muted, 'left', 600);
+  } else if (template === 'framed') {
+    const frameY = sizeH * .2, frameH = isWide ? sizeH * .6 : sizeH * .48, frameW = sizeW - margin * 2;
+    ctx.strokeStyle = 'rgba(255,255,255,.82)'; ctx.lineWidth = 3; rr(margin, frameY, frameW, frameH); ctx.stroke();
+    text('PHOTO FEATURE', margin + 24, frameY + 22, 18, '#fff', 'left', 900);
+    ctx.fillStyle = 'rgba(0,0,0,.48)'; rr(margin + 18, frameY + frameH - 112, frameW - 36, 92, 14); ctx.fill();
+    text(distanceKm.toFixed(2), margin + 42, frameY + frameH - 94, 56, '#fff', 'left', 900);
+    text(`KM  ·  ${time}`, margin + 42, frameY + frameH - 35, 18, '#ffcc72', 'left', 800);
+    text(activityName.toUpperCase(), margin, frameY + frameH + 32, 27, ink, 'left', 900);
+    text(`${athleteName}  ·  ${translateDateToEn(dateStr)}`, margin, frameY + frameH + 70, 18, muted, 'left', 650);
+  } else if (template === 'split') {
+    // Editorial two-column layout: a quiet photo field plus a strong metric column.
+    const divider = isWide ? sizeW * .62 : sizeW * .56;
+    ctx.fillStyle = photoMode ? 'rgba(3,14,20,.22)' : 'rgba(3,14,20,.82)'; ctx.fillRect(divider, 0, sizeW - divider, sizeH);
+    text('TODAY', divider + margin * .55, sizeH * .22, 17, '#8fe8e2', 'left', 900);
+    text(distanceKm.toFixed(2), divider + margin * .55, sizeH * .29, isWide ? 96 : 76, '#fff', 'left', 900);
+    text('KM', divider + margin * .55, sizeH * .29 + (isWide ? 98 : 78), 20, '#8fe8e2', 'left', 900);
+    text(time, divider + margin * .55, sizeH * .58, 32, '#fff', 'left', 800);
+    text('MOVING TIME', divider + margin * .55, sizeH * .63, 14, muted, 'left', 800);
+    text(activityName.toUpperCase(), margin, sizeH - margin * 2.2, 28, ink, 'left', 900);
+    text(translateDateToEn(dateStr), margin, sizeH - margin * 1.4, 18, muted, 'left', 650);
+  } else if (template === 'orbit') {
+    // Orbit uses rings for the monthly goal, leaving the photo centre unobstructed.
+    const cX = sizeW - margin * 2.1, cY = sizeH - margin * 2.1, r = Math.min(sizeW, sizeH) * .15;
+    ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 13; ctx.beginPath(); ctx.arc(cX, cY, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#c7a6ff'; ctx.lineWidth = 13; ctx.beginPath(); ctx.arc(cX, cY, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progressPercent / 100); ctx.stroke();
+    text(`${progressPercent.toFixed(0)}%`, cX, cY - 24, 34, '#fff', 'center', 900); text('GOAL', cX, cY + 20, 13, muted, 'center', 900);
+    text(distanceKm.toFixed(2), margin, sizeH * .3, isWide ? 160 : 126, '#fff', 'left', 900); text('KM / ACTIVITY', margin, sizeH * .3 + (isWide ? 164 : 130), 18, '#c7a6ff', 'left', 900);
+    text(`${icon}  ${activityName}`, margin, sizeH - margin * 2, 23, ink, 'left', 800);
+  } else if (template === 'grid') {
+    // A lightweight note-board; four small cells rather than one opaque block.
+    const cellGap = 12, cellW = (sizeW - margin * 2 - cellGap) / 2, cellH = Math.min(sizeH * .13, 150), baseY = sizeH - margin - cellH * 2 - cellGap;
+    const cell = (x, y, key, value, accent) => { ctx.fillStyle = photoMode ? 'rgba(9,28,14,.18)' : 'rgba(9,28,14,.73)'; rr(x, y, cellW, cellH, 12); ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,.24)'; ctx.lineWidth = 1; rr(x, y, cellW, cellH, 12); ctx.stroke(); text(key, x + 18, y + 16, 13, muted, 'left', 800); text(value, x + 18, y + 40, 30, accent, 'left', 900); };
+    text('ACTIVITY NOTES', margin, sizeH * .2, 30, ink, 'left', 900); text(activityName.toUpperCase(), margin, sizeH * .25, 18, '#9ee6a6', 'left', 800);
+    cell(margin, baseY, 'DISTANCE', `${distanceKm.toFixed(2)} KM`, '#fff'); cell(margin + cellW + cellGap, baseY, 'TIME', time, '#9ee6a6');
+    cell(margin, baseY + cellH + cellGap, 'MONTH', `${distVal.toFixed(1)} KM`, '#fff'); cell(margin + cellW + cellGap, baseY + cellH + cellGap, 'GOAL', `${progressPercent.toFixed(0)}%`, '#9ee6a6');
+  } else if (template === 'ribbon') {
+    // A diagonal translucent ribbon keeps the central image visible.
+    ctx.save(); ctx.translate(sizeW * .02, sizeH * .62); ctx.rotate(-0.08); ctx.fillStyle = photoMode ? 'rgba(83,19,13,.42)' : 'rgba(83,19,13,.88)'; ctx.fillRect(-margin, -72, sizeW + margin * 2, 176); ctx.restore();
+    text('DISTANCE', margin, sizeH * .63, 15, '#ffb29a', 'left', 900); text(distanceKm.toFixed(2), margin, sizeH * .67, isWide ? 102 : 84, '#fff', 'left', 900); text('KM', margin, sizeH * .67 + (isWide ? 106 : 88), 20, '#ffb29a', 'left', 900);
+    text(`${activityName.toUpperCase()}  ·  ${time}`, margin, sizeH * .82, 21, '#fff', 'left', 800); text(translateDateToEn(dateStr), margin, sizeH * .86, 16, muted, 'left', 650);
+  } else if (template === 'track') {
+    // A simple route-like line runs around the perimeter; data stays in the corners.
+    ctx.strokeStyle = '#83ddf0'; ctx.lineWidth = 5; ctx.setLineDash([18, 14]); rr(margin, margin * 2.2, sizeW - margin * 2, sizeH - margin * 3.2, 36); ctx.stroke(); ctx.setLineDash([]);
+    text('ON THE TRACK', margin * 1.5, sizeH * .25, 18, '#83ddf0', 'left', 900); text(distanceKm.toFixed(2), margin * 1.5, sizeH * .29, isWide ? 148 : 118, '#fff', 'left', 900); text('KM', margin * 1.5, sizeH * .29 + (isWide ? 152 : 122), 22, '#83ddf0', 'left', 900);
+    text(time, sizeW - margin * 1.5, sizeH - margin * 2.1, 34, '#fff', 'right', 900); text('MOVING TIME', sizeW - margin * 1.5, sizeH - margin * 1.5, 14, muted, 'right', 800);
+  } else if (template === 'journal') {
+    // Paper-inspired caption card at the very bottom, intentionally modest over photos.
+    const paperH = sizeH * .27, paperY = sizeH - paperH;
+    ctx.fillStyle = photoMode ? 'rgba(245,238,225,.84)' : '#f0e4d1'; ctx.fillRect(0, paperY, sizeW, paperH);
+    const paperInk = '#29241f'; text('RUN JOURNAL', margin, paperY + margin * .55, 15, '#a14d32', 'left', 900); text(activityName, margin, paperY + margin * 1.05, 29, paperInk, 'left', 900);
+    text(`${distanceKm.toFixed(2)} KM`, margin, paperY + margin * 1.7, 35, paperInk, 'left', 900); text(`${time}  ·  ${translateDateToEn(dateStr)}`, sizeW - margin, paperY + margin * 1.85, 16, '#645a4f', 'right', 700);
+  } else if (template === 'wave') {
+    // Two thin flowing strokes create motion without a filled information panel.
+    ctx.strokeStyle = '#8ee9ed'; ctx.lineWidth = 7; for (let row = 0; row < 2; row++) { ctx.beginPath(); for (let x = 0; x <= sizeW; x += 18) { const y = sizeH * (.72 + row * .06) + Math.sin(x / 85 + row) * 16; if (!x) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke(); }
+    text('FLOW STATE', margin, sizeH * .24, 17, '#8ee9ed', 'left', 900); text(distanceKm.toFixed(2), margin, sizeH * .29, isWide ? 152 : 122, '#fff', 'left', 900); text('KM', margin, sizeH * .29 + (isWide ? 156 : 126), 21, '#8ee9ed', 'left', 900);
+    text(`${activityName.toUpperCase()}  /  ${time}`, margin, sizeH - margin * 1.5, 19, ink, 'left', 800);
+  } else if (template === 'mono') {
+    // High-contrast typographic treatment; works well on busy photos.
+    ctx.fillStyle = photoMode ? 'rgba(0,0,0,.17)' : 'rgba(0,0,0,.68)'; ctx.fillRect(0, sizeH * .55, sizeW, sizeH * .45);
+    text('DISTANCE', margin, sizeH * .61, 16, '#d6d6d6', 'left', 900); text(distanceKm.toFixed(2), margin, sizeH * .65, isWide ? 160 : 130, '#fff', 'left', 900); text('KM', margin, sizeH * .65 + (isWide ? 164 : 134), 22, '#d6d6d6', 'left', 900);
+    text(time, sizeW - margin, sizeH * .73, 38, '#fff', 'right', 900); text(`${icon}  ${activityName.toUpperCase()}`, margin, sizeH - margin * 1.4, 19, '#fff', 'left', 800);
+  } else if (template === 'scoreboard') {
+    // Sport-screen inspired rows with generous gaps and faint separators.
+    text('ACTIVITY SCOREBOARD', margin, sizeH * .2, 27, ink, 'left', 900);
+    const row = (y, label, value, accent) => { ctx.strokeStyle = 'rgba(255,255,255,.27)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(margin, y + 58); ctx.lineTo(sizeW - margin, y + 58); ctx.stroke(); text(label, margin, y, 15, muted, 'left', 800); text(value, sizeW - margin, y - 5, 42, accent, 'right', 900); };
+    row(sizeH * .35, 'ACTIVITY DISTANCE', `${distanceKm.toFixed(2)} KM`, '#fff'); row(sizeH * .49, 'MOVING TIME', time, '#b9d4ff'); row(sizeH * .63, 'MONTHLY GOAL', `${progressPercent.toFixed(0)}%`, '#ffbf7b');
+    text(`${icon}  ${activityName}  ·  ${translateDateToEn(dateStr)}`, margin, sizeH - margin * 1.4, 18, ink, 'left', 700);
+  } else if (template === 'ticket') {
+    // A compact event-ticket panel that occupies the bottom strip only.
+    const ticketH = sizeH * .24, y = sizeH - margin - ticketH;
+    ctx.fillStyle = photoMode ? 'rgba(67,25,17,.34)' : 'rgba(67,25,17,.9)'; rr(margin, y, sizeW - margin * 2, ticketH, 18); ctx.fill();
+    ctx.strokeStyle = '#ffd087'; ctx.lineWidth = 2; ctx.setLineDash([9, 8]); rr(margin, y, sizeW - margin * 2, ticketH, 18); ctx.stroke(); ctx.setLineDash([]);
+    text('PIXME RUN TICKET', margin * 1.5, y + margin * .55, 15, '#ffd087', 'left', 900); text(distanceKm.toFixed(2), margin * 1.5, y + margin * .95, 56, '#fff', 'left', 900); text('KM', margin * 1.5, y + margin * .95 + 60, 18, '#ffd087', 'left', 900);
+    text(activityName.toUpperCase(), sizeW - margin * 1.5, y + margin * .65, 20, '#fff', 'right', 800); text(`${time}  ·  ${translateDateToEn(dateStr)}`, sizeW - margin * 1.5, y + margin * 1.25, 16, muted, 'right', 650);
+  } else { // poster
+    text('KEEP', margin, sizeH * .23, isWide ? 118 : 96, '#fff', 'left', 900); text('MOVING.', margin, sizeH * .23 + (isWide ? 125 : 102), isWide ? 118 : 96, '#ffd07c', 'left', 900);
+    text(distanceKm.toFixed(2), margin, sizeH * .62, isWide ? 210 : 165, '#fff', 'left', 900); text('KM', margin, sizeH * .62 + (isWide ? 208 : 162), 28, '#ffd07c', 'left', 900);
+    text(`${icon}  ${activityName.toUpperCase()}`, margin, sizeH - margin * 2.1, 25, '#fff', 'left', 800); text(`${time}  ·  ${progressPercent.toFixed(0)}% MONTHLY GOAL`, margin, sizeH - margin * 1.35, 18, 'rgba(255,255,255,.72)', 'left', 700);
+  }
+}
+
 function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType) {
   const ctx = canvas.getContext('2d');
   
@@ -1493,17 +1722,33 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
   } else {
     const grad = ctx.createLinearGradient(0, 0, sizeW, sizeH);
     if (template === 'minimal') {
-      grad.addColorStop(0, '#0f172a');
-      grad.addColorStop(0.5, '#1e1b4b');
-      grad.addColorStop(1, '#312e81');
+      grad.addColorStop(0, '#101116');
+      grad.addColorStop(0.52, '#20242d');
+      grad.addColorStop(1, '#090a0e');
     } else if (template === 'weekly') {
-      grad.addColorStop(0, '#090d16');
-      grad.addColorStop(0.5, '#111827');
-      grad.addColorStop(1, '#0284c7');
+      grad.addColorStop(0, '#09131b');
+      grad.addColorStop(0.55, '#102634');
+      grad.addColorStop(1, '#123949');
     } else if (template === 'stamp') {
-      grad.addColorStop(0, '#181028');
-      grad.addColorStop(0.5, '#231536');
-      grad.addColorStop(1, '#fc4c02');
+      grad.addColorStop(0, '#17120e');
+      grad.addColorStop(0.55, '#382116');
+      grad.addColorStop(1, '#b93a05');
+    } else if (template === 'monthly') {
+      grad.addColorStop(0, '#111c26');
+      grad.addColorStop(0.5, '#1a2d3a');
+      grad.addColorStop(1, '#183847');
+    } else if (template === 'profile') {
+      grad.addColorStop(0, '#14141d');
+      grad.addColorStop(0.58, '#26213b');
+      grad.addColorStop(1, '#34274d');
+    } else if (template === 'framed') {
+      grad.addColorStop(0, '#101114');
+      grad.addColorStop(0.55, '#202228');
+      grad.addColorStop(1, '#121316');
+    } else if (template === 'poster') {
+      grad.addColorStop(0, '#26113a');
+      grad.addColorStop(0.5, '#571d59');
+      grad.addColorStop(1, '#e54b31');
     } else {
       grad.addColorStop(0, '#111827');
       grad.addColorStop(0.5, '#1e293b');
@@ -1519,6 +1764,63 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.beginPath();
     ctx.arc(sizeW * 0.2, sizeH * 0.8, 400, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // Give every redesigned template a distinct visual language. The classic
+  // template intentionally bypasses this layer so its original artwork remains unchanged.
+  if (!isTransparentBG && template !== 'classic') {
+    ctx.save();
+    if (template === 'minimal') {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.055)';
+      ctx.lineWidth = Math.max(2, sizeW / 300);
+      for (let x = -sizeH; x < sizeW; x += sizeW / 7) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + sizeH, sizeH);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(252, 76, 2, 0.9)';
+      ctx.fillRect(0, sizeH * 0.64, sizeW, Math.max(9, sizeH / 120));
+    } else if (template === 'stamp') {
+      ctx.strokeStyle = 'rgba(255, 211, 143, 0.12)';
+      ctx.lineWidth = Math.max(2, sizeW / 360);
+      const cx = sizeW * 0.77;
+      const cy = sizeH * 0.32;
+      for (let r = sizeW * 0.1; r < sizeW * 0.62; r += sizeW * 0.075) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (template === 'monthly') {
+      const accent = ctx.createRadialGradient(sizeW * 0.88, sizeH * 0.08, 0, sizeW * 0.88, sizeH * 0.08, sizeW * 0.62);
+      accent.addColorStop(0, 'rgba(76, 192, 188, 0.28)');
+      accent.addColorStop(1, 'rgba(76, 192, 188, 0)');
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, sizeW, sizeH);
+    } else if (template === 'weekly') {
+      ctx.strokeStyle = 'rgba(112, 210, 224, 0.065)';
+      ctx.lineWidth = 1;
+      const grid = Math.max(52, sizeW / 18);
+      for (let x = 0; x <= sizeW; x += grid) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, sizeH); ctx.stroke(); }
+      for (let y = 0; y <= sizeH; y += grid) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(sizeW, y); ctx.stroke(); }
+    } else if (template === 'profile') {
+      ctx.fillStyle = 'rgba(185, 148, 255, 0.1)';
+      ctx.beginPath();
+      ctx.arc(sizeW * 0.92, sizeH * 0.08, sizeW * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (template === 'framed') {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(25, 25, sizeW - 50, sizeH - 50);
+    } else if (template === 'poster') {
+      ctx.fillStyle = 'rgba(255, 222, 136, 0.12)';
+      for (let i = 0; i < 9; i++) {
+        ctx.beginPath();
+        ctx.arc(sizeW * 0.75, sizeH * 0.2, sizeW * (0.1 + i * 0.065), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
   
   // 2. Draw Readability Gradients (Only if not transparent & not ultra-minimal)
@@ -1558,6 +1860,16 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.shadowBlur = 0;
   }
 
+  // Classic is deliberately left on its original renderer. Every other option
+  // uses the new collection above rather than inheriting a legacy composition.
+  if (template !== 'classic') {
+    drawModernShareTemplate(ctx, template, sizeW, sizeH, bgImage, {
+      athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType,
+      ratio, isTransparentBG, distVal, progressPercent
+    });
+    return;
+  }
+
   if (template === 'minimal') {
     // ==========================================
     // TEMPLATE 2: ULTRA MINIMAL (NIKE / STRAVA STYLE)
@@ -1566,7 +1878,7 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 36px ' + fontSans;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Pixme Run Club', 60, 60);
+    ctx.fillText('PIXME / RUN', 60, 60);
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 32px ' + fontSans;
@@ -1604,7 +1916,7 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 24px ' + fontSans;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${emoji} ${activityName}  •  ${translateDateToEn(dateStr)}  •  ⏱️ ${timeStr}`, sizeW / 2, pillY + pillH / 2);
+    ctx.fillText(`${emoji} ${activityName.toUpperCase()}  •  ${translateDateToEn(dateStr)}  •  ${timeStr}`, sizeW / 2, pillY + pillH / 2);
 
   } else if (template === 'stamp') {
     // ==========================================
@@ -1614,7 +1926,7 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 36px ' + fontSans;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Pixme Run Club', 60, 60);
+    ctx.fillText('PIXME ENDURANCE', 60, 60);
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 32px ' + fontSans;
@@ -1642,7 +1954,7 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 20px ' + fontSans;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('OFFICIAL ATHLETE STAMP', stampX + 30, stampY + 28);
+    ctx.fillText('PERSONAL BEST / ACTIVITY STAMP', stampX + 30, stampY + 28);
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 78px ' + fontSans;
@@ -1694,11 +2006,11 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 38px ' + fontSans;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Pixme Run Club', leftX, topY);
+    ctx.fillText('MONTHLY MILESTONE', leftX, topY);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.font = 'bold 20px ' + fontSans;
-    ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 48);
+    ctx.fillText('BUILD THE DISTANCE, ONE SESSION AT A TIME', leftX, topY + 48);
 
     // 2-Line Activity Info under title (Bigger font & clear spacing)
     ctx.fillStyle = '#FFFFFF';
@@ -1804,11 +2116,11 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 38px ' + fontSans;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Pixme Run Club', leftX, topY);
+    ctx.fillText('WEEK IN MOTION', leftX, topY);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.font = 'bold 20px ' + fontSans;
-    ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 48);
+    ctx.fillText('YOUR LAST 7 DAYS, AT A GLANCE', leftX, topY + 48);
 
     // 2-Line Activity Info under title (Bigger font & clear spacing)
     ctx.fillStyle = '#FFFFFF';
@@ -1929,11 +2241,11 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 36px ' + fontSans;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Pixme Run Club', leftX, topY);
+    ctx.fillText('ATHLETE SNAPSHOT', leftX, topY);
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
     ctx.font = 'bold 20px ' + fontSans;
-    ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 44);
+    ctx.fillText('A PERSONAL VIEW OF YOUR PROGRESS', leftX, topY + 44);
 
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 34px ' + fontSans;
@@ -2188,6 +2500,61 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
       ctx.font = '500 18px ' + fontSans;
       ctx.fillText(timeSubStr, rightX - 20, wY + 40);
     });
+  } else if (template === 'poster') {
+    // ==========================================
+    // TEMPLATE 8: PACE POSTER — bold single-activity share card
+    // ==========================================
+    const pad = ratio === '16:9' ? 90 : 70;
+    const heroSize = ratio === '16:9' ? 260 : (sizeH > 1400 ? 248 : 190);
+    const heroY = ratio === '16:9' ? sizeH * 0.67 : sizeH * 0.62;
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+    ctx.font = '700 22px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('PIXME ACTIVE CLUB  /  PERSONAL ACTIVITY', pad, pad);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = `900 ${ratio === '16:9' ? 90 : 70}px ${fontSans}`;
+    ctx.fillText('KEEP', pad, pad + 62);
+    ctx.fillStyle = '#ffcc73';
+    ctx.fillText('MOVING.', pad, pad + (ratio === '16:9' ? 158 : 138));
+
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = '700 28px ' + fontSans;
+    ctx.fillText(`${emoji}  ${activityName.toUpperCase()}`, pad, pad + (ratio === '16:9' ? 268 : 232));
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = '600 21px ' + fontSans;
+    ctx.fillText(`${translateDateToEn(dateStr)}  •  ${athleteName}`, pad, pad + (ratio === '16:9' ? 308 : 272));
+
+    ctx.fillStyle = '#fff';
+    ctx.font = `900 ${heroSize}px ${fontSans}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(distanceKm.toFixed(2), pad, heroY);
+    const posterDistanceWidth = ctx.measureText(distanceKm.toFixed(2)).width;
+    ctx.fillStyle = '#ffcc73';
+    ctx.font = '800 38px ' + fontSans;
+    ctx.fillText('KM', pad + posterDistanceWidth + 14, heroY - 12);
+
+    const statY = heroY + 58;
+    const lineW = sizeW - pad * 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.33)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(pad, statY); ctx.lineTo(pad + lineW, statY); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.font = '700 20px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('MOVING TIME', pad, statY + 24);
+    ctx.fillText('MONTHLY PROGRESS', pad + lineW * 0.56, statY + 24);
+    ctx.fillStyle = '#fff';
+    ctx.font = '800 40px ' + fontSans;
+    ctx.fillText(timeStr, pad, statY + 52);
+    ctx.fillStyle = '#ffcc73';
+    ctx.fillText(`${progressPercent.toFixed(0)}%`, pad + lineW * 0.56, statY + 52);
+
   } else if (template === 'framed') {
     // ==========================================
     // TEMPLATE 6: FRAMED PHOTO & OPEN HERO STATS
@@ -2249,11 +2616,11 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
       ctx.font = 'bold 36px ' + fontSans;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('Pixme Run Club', statX, 70);
+      ctx.fillText('PIXME PHOTO FEATURE', statX, 70);
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.font = 'bold 20px ' + fontSans;
-      ctx.fillText('Shut up !!! ,,, and Run …,,,', statX, 115);
+      ctx.fillText('THE MOMENT, WITH THE NUMBERS', statX, 115);
 
       ctx.fillStyle = '#FC4C02';
       ctx.font = 'bold 32px ' + fontSans;
@@ -2344,11 +2711,11 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
       ctx.font = 'bold 36px ' + fontSans;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText('Pixme Run Club', 50, 50);
+      ctx.fillText('PIXME PHOTO FEATURE', 50, 50);
 
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.font = 'bold 20px ' + fontSans;
-      ctx.fillText('Shut up !!! ,,, and Run …,,,', 50, 95);
+      ctx.fillText('THE MOMENT, WITH THE NUMBERS', 50, 95);
 
       ctx.fillStyle = '#FC4C02';
       ctx.font = 'bold 32px ' + fontSans;
@@ -2471,15 +2838,6 @@ function drawShareCanvas(canvas, bgImage, athleteName, activityName, dateStr, di
     ctx.font = 'bold 20px ' + fontSans;
     ctx.fillText('Shut up !!! ,,, and Run …,,,', leftX, topY + 48);
 
-    // 2-Line Activity Info under title
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 28px ' + fontSans;
-    ctx.fillText(`${emoji} ${activityName}`, leftX, topY + 95);
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-    ctx.font = '500 24px ' + fontSans;
-    ctx.fillText(`📅 ${translateDateToEn(dateStr)}   ⏱️ ${timeStr} (${distanceKm.toFixed(2)} KM)`, leftX, topY + 135);
-
     // Header Top Right: Athlete Profile Name
     ctx.fillStyle = '#FFFFFF';
     ctx.font = 'bold 34px ' + fontSans;
@@ -2593,3 +2951,712 @@ function shareGeneratedGraphic(athleteName) {
     }
   }, 'image/png');
 }
+
+// ==========================================================================
+// Sticker Pack & Modular Asset Exporter (Roxfit Style)
+// ==========================================================================
+
+function switchShareMode(mode) {
+  const graphicBtn = document.getElementById('mode-btn-graphic');
+  const stickersBtn = document.getElementById('mode-btn-stickers');
+  const graphicView = document.getElementById('share-view-graphic');
+  const stickersView = document.getElementById('share-view-stickers');
+  const graphicFooter = document.getElementById('footer-actions-graphic');
+  const stickersFooter = document.getElementById('footer-actions-stickers');
+  const tipText = document.getElementById('share-modal-tip-text');
+
+  if (mode === 'stickers') {
+    if (graphicBtn) graphicBtn.classList.remove('active');
+    if (stickersBtn) stickersBtn.classList.add('active');
+    if (graphicView) graphicView.classList.add('hidden');
+    if (stickersView) stickersView.classList.remove('hidden');
+    if (graphicFooter) graphicFooter.style.display = 'none';
+    if (stickersFooter) {
+      stickersFooter.classList.remove('hidden');
+      stickersFooter.style.display = 'flex';
+    }
+    if (tipText) tipText.textContent = '💡 ทิป: สามารถแตะ "คัดลอก" เพื่อนำสติกเกอร์ไป Paste ใน IG Story หรือกด "ดาวน์โหลดที่เลือก" เพื่อเซฟ PNG แยกชิ้นทั้งหมดได้ทันที';
+    renderAllStickers();
+  } else {
+    if (graphicBtn) graphicBtn.classList.add('active');
+    if (stickersBtn) stickersBtn.classList.remove('active');
+    if (graphicView) graphicView.classList.remove('hidden');
+    if (stickersView) stickersView.classList.add('hidden');
+    if (graphicFooter) graphicFooter.style.display = 'contents';
+    if (stickersFooter) {
+      stickersFooter.classList.add('hidden');
+      stickersFooter.style.display = 'none';
+    }
+    if (tipText) tipText.textContent = '💡 ทิป: บนมือถือสามารถกดค้างที่รูปภาพด้านบนเพื่อบันทึกหรือคัดลอกได้เช่นกัน';
+    refreshShareCanvas();
+  }
+}
+
+const STICKER_CONFIGS = [
+  { id: 'header', title: '🏷️ หัวคลับ & สโลแกน', desc: 'โลโก้คลับ สโลแกน และชื่อสมาชิก' },
+  { id: 'activity', title: '🏃 สถิติกิจกรรมของวัน', desc: 'ป้ายระยะทาง เวลา และ Pace แบบการ์ดกระจก' },
+  { id: 'target', title: '🎯 แถบเป้าหมายเดือน (100K)', desc: 'แถบความคืบหน้าและเปอร์เซ็นต์สะสมประจำเดือน' },
+  { id: 'weekly', title: '📊 กราฟแท่ง 7 วันล่าสุด', desc: 'กราฟแท่งแคปซูลทรงรียาว Strava Style' },
+  { id: 'monthly_duo', title: '📦 กล่องสถิติสะสมเดือน', desc: 'การ์ดคู่ระยะวิ่งสะสม + เวลาซ้อมรวม' },
+  { id: 'recent_logs', title: '📝 บันทึก 4 กิจกรรมล่าสุด', desc: 'การ์ดลิสต์ประวัติกิจกรรมย่อย 4 รายการ' },
+  { id: 'status_badge', title: '🏅 ป้ายสถานะ & ริบบิ้น', desc: 'ป้ายสถานะกำลังใจและเป้าหมายประจำเดือน' }
+];
+
+function renderAllStickers() {
+  const container = document.getElementById('stickers-grid-container');
+  if (!container || !window.currentShareData) return;
+
+  const d = window.currentShareData;
+  const athlete = rawActivities.find(a => a.name === d.athleteName);
+  const distVal = athlete ? athlete.distance : d.distanceKm;
+  const progressPercent = Math.min((distVal / 100) * 100, 100);
+  
+  let statusMsg = `🏃 ขาดอีก ${(100 - distVal).toFixed(1)} km ถึงเป้าหมาย!`;
+  if (distVal >= 100) {
+    statusMsg = '🎉 Goal 100km Achieved!';
+  } else if (distVal >= 80) {
+    statusMsg = `💪 เหลือเพียง ${(100 - distVal).toFixed(1)} km!`;
+  }
+
+  // Generate HTML skeleton for stickers if empty
+  if (container.children.length === 0) {
+    container.innerHTML = STICKER_CONFIGS.map(s => `
+      <div class="sticker-card" id="sticker-card-${s.id}">
+        <div class="sticker-card-header">
+          <label class="sticker-select-label">
+            <input type="checkbox" class="sticker-checkbox" data-sticker="${s.id}" checked onchange="updateStickerCount()" />
+            <span>${s.title}</span>
+          </label>
+          <div class="sticker-quick-actions">
+            <button class="sticker-mini-btn" title="คัดลอกรูปภาพไป Paste ใน IG Story" onclick="copyStickerToClipboard('${s.id}')">📋 คัดลอก</button>
+            <button class="sticker-mini-btn" title="ดาวน์โหลดไฟล์ PNG โปร่งใส" onclick="downloadSingleSticker('${s.id}')">📥 PNG</button>
+          </div>
+        </div>
+        <div class="sticker-preview-box">
+          <canvas id="sticker-canvas-${s.id}" style="display:none;"></canvas>
+          <img id="sticker-preview-${s.id}" class="sticker-img" alt="${s.title}" />
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Draw each sticker on its offscreen transparent canvas
+  try { renderClubHeaderSticker('header', d.athleteName); } catch (e) { console.error('Sticker header err:', e); }
+  try { renderActivityStatSticker('activity', d.activityName, d.dateStr, d.distanceKm, d.movingTimeSec, d.sportType); } catch (e) { console.error('Sticker activity err:', e); }
+  try { renderMonthlyTargetSticker('target', d.athleteName, distVal, progressPercent, statusMsg, selectedMonth); } catch (e) { console.error('Sticker target err:', e); }
+  try { render7DayChartSticker('weekly', d.athleteName); } catch (e) { console.error('Sticker weekly err:', e); }
+  try { renderMonthlyDuoSticker('monthly_duo', athlete, distVal, d.sportType, selectedMonth); } catch (e) { console.error('Sticker duo err:', e); }
+  try { renderRecentWorkoutsSticker('recent_logs', d.athleteName, distVal, d.sportType); } catch (e) { console.error('Sticker logs err:', e); }
+  try { renderStatusRibbonSticker('status_badge', distVal, statusMsg); } catch (e) { console.error('Sticker status err:', e); }
+
+  updateStickerCount();
+}
+
+function updateStickerImagePreview(stickerKey) {
+  const canvas = document.getElementById(`sticker-canvas-${stickerKey}`);
+  const img = document.getElementById(`sticker-preview-${stickerKey}`);
+  if (canvas && img) {
+    img.src = canvas.toDataURL('image/png');
+  }
+}
+
+// 1. Club Header Sticker
+function renderClubHeaderSticker(id, athleteName) {
+  const canvas = document.getElementById(`sticker-canvas-${id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const fontSans = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif';
+
+  canvas.width = 960;
+  canvas.height = 200;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background Capsule Glass
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.78)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(20, 20, 920, 160, 28);
+  else ctx.rect(20, 20, 920, 160);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Left: Club Name & Slogan
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 44px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Pixme Run Club', 50, 48);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = 'bold 22px ' + fontSans;
+  ctx.fillText('Shut up !!! ,,, and Run …,,,', 50, 108);
+
+  // Right: Athlete Name
+  ctx.fillStyle = '#FC4C02';
+  ctx.font = 'bold 38px ' + fontSans;
+  ctx.textAlign = 'right';
+  ctx.fillText(athleteName, 910, 52);
+
+  updateStickerImagePreview(id);
+}
+
+// 2. Activity Stat Sticker
+function renderActivityStatSticker(id, activityName, dateStr, distanceKm, movingTimeSec, sportType) {
+  const canvas = document.getElementById(`sticker-canvas-${id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const fontSans = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif';
+  const emoji = sportType === 'Run' || sportType === 'TrailRun' || sportType === 'VirtualRun' ? '🏃' : sportType === 'Walk' ? '🚶' : sportType === 'Ride' ? '🚴' : '⚡';
+  const timeStr = formatDuration(movingTimeSec);
+
+  canvas.width = 960;
+  canvas.height = 240;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background Glass Card
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.82)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(20, 20, 920, 200, 28);
+  else ctx.rect(20, 20, 920, 200);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Giant Distance
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 88px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(distanceKm.toFixed(2), 50, 42);
+
+  const distWidth = ctx.measureText(distanceKm.toFixed(2)).width;
+  ctx.fillStyle = '#FC4C02';
+  ctx.font = 'bold 36px ' + fontSans;
+  ctx.fillText('KM', 50 + distWidth + 14, 86);
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(50, 148);
+  ctx.lineTo(910, 148);
+  ctx.stroke();
+
+  // Activity Info Line
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.font = 'bold 24px ' + fontSans;
+  ctx.fillText(`${emoji} ${activityName}`, 50, 166);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = '500 22px ' + fontSans;
+  ctx.textAlign = 'right';
+  ctx.fillText(`⏱️ ${timeStr}  •  📅 ${translateDateToEn(dateStr)}`, 910, 168);
+
+  updateStickerImagePreview(id);
+}
+
+// 3. Monthly Target Progress Sticker
+function renderMonthlyTargetSticker(id, athleteName, distVal, progressPercent, statusMsg, selMonth) {
+  const canvas = document.getElementById(`sticker-canvas-${id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const fontSans = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif';
+
+  canvas.width = 960;
+  canvas.height = 240;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.82)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(20, 20, 920, 200, 28);
+  else ctx.rect(20, 20, 920, 200);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Header Target
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+  ctx.font = 'bold 26px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`🎯 TARGET (${formatMonthShort(selMonth)}) - 100K`, 50, 42);
+
+  ctx.fillStyle = progressPercent >= 100 ? '#FFD700' : '#FC4C02';
+  ctx.font = 'bold 30px ' + fontSans;
+  ctx.textAlign = 'right';
+  ctx.fillText(`${distVal.toFixed(1)} / 100 KM (${progressPercent.toFixed(0)}%)`, 910, 40);
+
+  // Progress Bar
+  const barY = 90;
+  const barW = 860;
+  const barH = 22;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(50, barY, barW, barH, 11);
+  else ctx.rect(50, barY, barW, barH);
+  ctx.fill();
+
+  if (progressPercent > 0) {
+    const fillW = barW * (progressPercent / 100);
+    const fillGrad = ctx.createLinearGradient(50, barY, 50 + fillW, barY);
+    fillGrad.addColorStop(0, distVal >= 100 ? '#FFD700' : '#fc4c02');
+    fillGrad.addColorStop(1, distVal >= 100 ? '#FFA500' : '#ff7a00');
+    ctx.fillStyle = fillGrad;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(50, barY, fillW, barH, 11);
+    else ctx.rect(50, barY, fillW, barH);
+    ctx.fill();
+  }
+
+  // Status Badge
+  const pillY = 136;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(50, pillY, barW, 54, 27);
+  else ctx.rect(50, pillY, barW, 54);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 22px ' + fontSans;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(statusMsg, 50 + barW / 2, pillY + 27);
+
+  updateStickerImagePreview(id);
+}
+
+// 4. 7-Day Capsule Bar Chart Sticker
+function render7DayChartSticker(id, athleteName) {
+  const canvas = document.getElementById(`sticker-canvas-${id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const fontSans = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif';
+  const rollingData = get7DayRollingData(athleteName);
+
+  canvas.width = 960;
+  canvas.height = 360;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.82)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(20, 20, 920, 320, 28);
+  else ctx.rect(20, 20, 920, 320);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 28px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText('7 วันล่าสุด', 50, 42);
+
+  const maxVal = Math.max(...rollingData.dailyValues, 10);
+  const chartBottomY = 260;
+  const maxBarH = 150;
+  const barW = 46;
+  const gap = 38;
+  const totalBarsWidth = 7 * barW + 6 * gap;
+  const startX = 20 + Math.floor((920 - totalBarsWidth) / 2);
+
+  for (let i = 0; i < 7; i++) {
+    const val = rollingData.dailyValues[i];
+    const bx = startX + i * (barW + gap);
+    const isToday = (i === 6);
+    
+    // Track
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, chartBottomY - maxBarH, barW, maxBarH, barW / 2);
+    else ctx.rect(bx, chartBottomY - maxBarH, barW, maxBarH);
+    ctx.fill();
+
+    // Active
+    if (val > 0) {
+      const h = Math.min((val / maxVal) * maxBarH, maxBarH);
+      const fillGrad = ctx.createLinearGradient(bx, chartBottomY - h, bx, chartBottomY);
+      fillGrad.addColorStop(0, '#FC4C02');
+      fillGrad.addColorStop(1, '#3B82F6');
+      ctx.fillStyle = fillGrad;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, chartBottomY - h, barW, h, barW / 2);
+      else ctx.rect(bx, chartBottomY - h, barW, h);
+      ctx.fill();
+
+      // Runner emoji
+      ctx.font = 'bold 20px ' + fontSans;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🏃', bx + barW / 2, chartBottomY - Math.max(h / 2, 18));
+
+      // Value
+      ctx.fillStyle = isToday ? '#FFD700' : '#FFFFFF';
+      ctx.font = 'bold 18px ' + fontSans;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(val.toFixed(1), bx + barW / 2, chartBottomY - h - 4);
+    }
+
+    // Weekday & Day No
+    ctx.fillStyle = isToday ? '#FC4C02' : 'rgba(255, 255, 255, 0.85)';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(rollingData.weekdayLabels[i], bx + barW / 2, chartBottomY + 8);
+
+    ctx.fillStyle = isToday ? '#FC4C02' : 'rgba(255, 255, 255, 0.55)';
+    ctx.font = isToday ? 'bold 18px ' + fontSans : '500 16px ' + fontSans;
+    ctx.fillText(rollingData.dayNumbers[i], bx + barW / 2, chartBottomY + 34);
+  }
+
+  updateStickerImagePreview(id);
+}
+
+// 5. Monthly Duo Box Sticker
+function renderMonthlyDuoSticker(id, athlete, distVal, sportType, selMonth) {
+  const canvas = document.getElementById(`sticker-canvas-${id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const fontSans = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif';
+
+  let totalSecs = 0;
+  if (athlete && athlete.movingTime !== undefined && athlete.movingTime > 0) {
+    totalSecs = athlete.movingTime;
+  } else if (athlete) {
+    const logsToUse = (currentMonthWorkoutLogs && currentMonthWorkoutLogs.length > 0) ? currentMonthWorkoutLogs : rawWorkoutLogs;
+    const athleteWorkouts = getWorkoutsForAthlete(athlete.name, distVal, 0, sportType, 0, logsToUse);
+    athleteWorkouts.forEach(w => { totalSecs += w.moving_time; });
+  }
+
+  canvas.width = 960;
+  canvas.height = 180;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cardW = 445;
+  const cardH = 140;
+
+  // Box 1
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.82)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(20, 20, cardW, cardH, 24);
+  else ctx.rect(20, 20, cardW, cardH);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = 'bold 22px ' + fontSans;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`วิ่งสะสม (${formatMonthShort(selMonth)})`, 20 + cardW / 2, 42);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 44px ' + fontSans;
+  ctx.fillText(`${distVal.toFixed(1)} km`, 20 + cardW / 2, 84);
+
+  // Box 2
+  const box2X = 20 + cardW + 30;
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.82)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(box2X, 20, cardW, cardH, 24);
+  else ctx.rect(box2X, 20, cardW, cardH);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+  ctx.font = 'bold 22px ' + fontSans;
+  ctx.textAlign = 'center';
+  ctx.fillText(`เวลาซ้อมรวม (${formatMonthShort(selMonth)})`, box2X + cardW / 2, 42);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 44px ' + fontSans;
+  ctx.fillText(formatDuration(totalSecs), box2X + cardW / 2, 84);
+
+  updateStickerImagePreview(id);
+}
+
+// 6. Recent Workouts Sticker
+function renderRecentWorkoutsSticker(id, athleteName, distVal, sportType) {
+  const canvas = document.getElementById(`sticker-canvas-${id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const fontSans = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif';
+
+  const athleteWorkouts = getWorkoutsForAthlete(
+    athleteName, 
+    distVal, 
+    0, 
+    sportType, 
+    0, 
+    (currentMonthWorkoutLogs && currentMonthWorkoutLogs.length > 0) ? currentMonthWorkoutLogs : rawWorkoutLogs
+  );
+  athleteWorkouts.sort((a, b) => {
+    if (a.first_seen && b.first_seen && a.first_seen !== b.first_seen) return b.first_seen - a.first_seen;
+    return parseThaiDate(b.date) - parseThaiDate(a.date);
+  });
+  const top4Workouts = athleteWorkouts.slice(0, 4);
+
+  canvas.width = 960;
+  canvas.height = 420;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.82)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(20, 20, 920, 380, 28);
+  else ctx.rect(20, 20, 920, 380);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 26px ' + fontSans;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(`บันทึกกิจกรรมล่าสุด (${athleteWorkouts.length} ครั้ง)`, 50, 42);
+
+  top4Workouts.forEach((w, idx) => {
+    const wY = 86 + idx * 72;
+    const wH = 60;
+    const boxW = 860;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(50, wY, boxW, wH, 14);
+    else ctx.rect(50, wY, boxW, wH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.stroke();
+
+    const wIcon = w.sport_type === 'Run' || w.sport_type === 'TrailRun' || w.sport_type === 'VirtualRun' ? '🏃' : w.sport_type === 'Walk' ? '🚶' : w.sport_type === 'Ride' ? '🚴' : '⚡';
+
+    // Left
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${wIcon}  ${w.name}`, 68, wY + 20);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.font = '500 16px ' + fontSans;
+    ctx.fillText(translateDateToEn(w.date), 98, wY + 44);
+
+    // Right
+    const distStr = ['Run', 'TrailRun', 'VirtualRun', 'Walk'].includes(w.sport_type) ? `${w.dist_km.toFixed(1)} km` : formatDuration(w.moving_time);
+    const timeSubStr = formatDuration(w.moving_time);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 20px ' + fontSans;
+    ctx.textAlign = 'right';
+    ctx.fillText(distStr, 880, wY + 20);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = '500 16px ' + fontSans;
+    ctx.fillText(timeSubStr, 880, wY + 44);
+  });
+
+  updateStickerImagePreview(id);
+}
+
+// 7. Status Ribbon Sticker
+function renderStatusRibbonSticker(id, distVal, statusMsg) {
+  const canvas = document.getElementById(`sticker-canvas-${id}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const fontSans = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif';
+
+  canvas.width = 840;
+  canvas.height = 140;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = 'rgba(10, 15, 24, 0.85)';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(20, 20, 800, 100, 50);
+  else ctx.rect(20, 20, 800, 100);
+  ctx.fill();
+
+  const borderGrad = ctx.createLinearGradient(20, 20, 820, 120);
+  borderGrad.addColorStop(0, '#FC4C02');
+  borderGrad.addColorStop(0.5, '#FFD700');
+  borderGrad.addColorStop(1, '#3B82F6');
+  ctx.strokeStyle = borderGrad;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 28px ' + fontSans;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(statusMsg, 420, 70);
+
+  updateStickerImagePreview(id);
+}
+
+// ==========================================================================
+// Sticker Batch & Individual Export Handlers (Multi-Export without ZIP)
+// ==========================================================================
+
+function toggleAllStickers(select) {
+  const checkboxes = document.querySelectorAll('.sticker-checkbox');
+  checkboxes.forEach(cb => cb.checked = select);
+  updateStickerCount();
+}
+
+function updateStickerCount() {
+  const total = document.querySelectorAll('.sticker-checkbox').length;
+  const checked = document.querySelectorAll('.sticker-checkbox:checked').length;
+  const countEl = document.getElementById('stickers-selected-count');
+  if (countEl) countEl.textContent = `เลือกแล้ว ${checked}/${total} ชิ้น`;
+  const downloadBtn = document.getElementById('stickers-download-btn');
+  if (downloadBtn) {
+    downloadBtn.innerHTML = `📥 ดาวน์โหลดที่เลือก (${checked} ชิ้น)`;
+  }
+}
+
+function downloadSingleSticker(stickerKey) {
+  const canvas = document.getElementById(`sticker-canvas-${stickerKey}`);
+  if (!canvas) return;
+  const d = window.currentShareData;
+  const cleanName = (d ? d.athleteName : 'Athlete').replace(/\s+/g, '_');
+  const dataUrl = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = `PixmeSticker_${cleanName}_${stickerKey}.png`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showStickerToast('📥 ดาวน์โหลดไฟล์ PNG เรียบร้อยแล้ว!');
+}
+
+async function copyStickerToClipboard(stickerKey) {
+  const canvas = document.getElementById(`sticker-canvas-${stickerKey}`);
+  if (!canvas) return;
+
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      canvas.toBlob(async function(blob) {
+        if (!blob) return;
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          showStickerToast('📋 คัดลอกสติกเกอร์แล้ว! นำไป Paste ใน IG Story หรือแอปแต่งภาพได้ทันที');
+        } catch (err) {
+          console.warn('Clipboard write permission denied, falling back to download', err);
+          downloadSingleSticker(stickerKey);
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.warn('Blob generation error', err);
+      downloadSingleSticker(stickerKey);
+    }
+  } else {
+    downloadSingleSticker(stickerKey);
+  }
+}
+
+// Multi-Export All Selected Stickers Sequentially (No ZIP needed!)
+async function downloadSelectedStickers(athleteName) {
+  const checkboxes = document.querySelectorAll('.sticker-checkbox:checked');
+  if (checkboxes.length === 0) {
+    alert('กรุณาเลือกสติกเกอร์อย่างน้อย 1 ชิ้นเพื่อดาวน์โหลดครับ');
+    return;
+  }
+  
+  const downloadBtn = document.getElementById('stickers-download-btn');
+  const originalText = downloadBtn ? downloadBtn.innerHTML : '';
+  if (downloadBtn) downloadBtn.innerHTML = `⏳ กำลังดาวน์โหลด (${checkboxes.length} ชิ้น)...`;
+
+  const cleanName = athleteName.replace(/\s+/g, '_');
+
+  for (let i = 0; i < checkboxes.length; i++) {
+    const cb = checkboxes[i];
+    const stickerKey = cb.getAttribute('data-sticker');
+    const canvas = document.getElementById(`sticker-canvas-${stickerKey}`);
+    if (canvas) {
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `PixmeSticker_${cleanName}_${stickerKey}_${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Delay between sequential downloads so browser doesn't throttle or block
+      if (i < checkboxes.length - 1) {
+        await new Promise(r => setTimeout(r, 260));
+      }
+    }
+  }
+
+  if (downloadBtn) downloadBtn.innerHTML = `✅ ดาวน์โหลดครบ ${checkboxes.length} ชิ้นแล้ว!`;
+  showStickerToast(`🎉 ดาวน์โหลดสติกเกอร์ครบทั้ง ${checkboxes.length} ชิ้นเรียบร้อย!`);
+  setTimeout(() => {
+    if (downloadBtn) downloadBtn.innerHTML = originalText;
+  }, 2500);
+}
+
+async function shareSelectedStickers(athleteName) {
+  const checkboxes = document.querySelectorAll('.sticker-checkbox:checked');
+  if (checkboxes.length === 0) {
+    alert('กรุณาเลือกสติกเกอร์อย่างน้อย 1 ชิ้นเพื่อแชร์ครับ');
+    return;
+  }
+
+  const cleanName = athleteName.replace(/\s+/g, '_');
+  const files = [];
+
+  for (let i = 0; i < checkboxes.length; i++) {
+    const cb = checkboxes[i];
+    const stickerKey = cb.getAttribute('data-sticker');
+    const canvas = document.getElementById(`sticker-canvas-${stickerKey}`);
+    if (canvas) {
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      if (blob) {
+        files.push(new File([blob], `PixmeSticker_${cleanName}_${stickerKey}.png`, { type: 'image/png' }));
+      }
+    }
+  }
+
+  if (files.length > 0 && navigator.canShare && navigator.canShare({ files: files })) {
+    try {
+      await navigator.share({
+        files: files,
+        title: 'Pixme Active Club Stickers',
+        text: 'สติกเกอร์สถิติกิจกรรมสำหรับแต่งรูปภาพ'
+      });
+    } catch (err) {
+      console.error('Share failed', err);
+    }
+  } else {
+    // Fallback to sequential multi-download
+    downloadSelectedStickers(athleteName);
+  }
+}
+
+function showStickerToast(msg) {
+  let toast = document.getElementById('sticker-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'sticker-toast';
+    toast.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.96);color:#fff;padding:12px 24px;border-radius:30px;border:1px solid rgba(252,76,2,0.7);box-shadow:0 10px 30px rgba(0,0,0,0.6);font-size:0.85rem;font-weight:600;z-index:999999;transition:all 0.3s ease;pointer-events:none;text-align:center;max-width:90%;opacity:0;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(10px)';
+  }, 2600);
+}
+
