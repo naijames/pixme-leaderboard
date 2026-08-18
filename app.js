@@ -1186,7 +1186,7 @@ function getIntervalSec() {
 loadData();
 
 // ==========================================================================
-// Workout Overlay Graphic & Sharing Functions
+// Workout Overlay Graphic & Sharing Functions (Roxfit-Style Clean UI)
 // ==========================================================================
 function openShareOverlay(athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType) {
   // 1. Create Modal Container if not exists
@@ -1198,28 +1198,66 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
     document.body.appendChild(modal);
   }
   
-  // 2. Set Modal Content
+  // 2. Set Modal Content (Roxfit Layout)
   modal.innerHTML = `
     <div class="share-modal-backdrop" onclick="closeShareOverlay()"></div>
-    <div class="share-modal-content">
-      <div class="share-modal-header">
-        <div class="share-modal-title-group">
-          <span class="share-modal-eyebrow">PIXME ACTIVE CLUB</span>
-          <h4>สร้างรูปและสติกเกอร์สถิติ</h4>
-        </div>
-        <button class="share-modal-close" onclick="closeShareOverlay()" aria-label="ปิดหน้าต่างสร้างรูปสรุป">&times;</button>
+    <div class="share-modal-content roxfit-theme">
+      <!-- Top Navigation Bar -->
+      <div class="rox-nav-bar">
+        <button class="rox-back-btn" onclick="closeShareOverlay()" aria-label="ย้อนกลับ">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h3 class="rox-nav-title">Share activity</h3>
+        <button class="rox-close-btn" onclick="closeShareOverlay()" aria-label="ปิด">&times;</button>
       </div>
-      <div class="share-modal-body">
-        <div class="share-mode-switcher">
-          <button class="share-mode-btn active" id="mode-btn-graphic" onclick="switchShareMode('graphic')">🎨 รูปภาพรวม (Full Graphic)</button>
-          <button class="share-mode-btn" id="mode-btn-stickers" onclick="switchShareMode('stickers')">📦 สติกเกอร์แยกชิ้น (PNG โปร่งใส)</button>
+
+      <div class="rox-modal-scroll-body">
+        <!-- SECTION 1: OVERLAYS (ROXFIT STYLE + SHOW ALL EXPANDABLE GRID) -->
+        <div class="rox-section">
+          <div class="rox-section-header">
+            <div>
+              <h4 class="rox-section-title">Overlays (สติกเกอร์แยกชิ้น)</h4>
+              <p class="rox-section-subtitle">แตะเพื่อคัดลอก หรือกดดูทั้งหมดเพื่อเลือกดาวน์โหลด</p>
+            </div>
+            <button id="rox-toggle-grid-btn" class="rox-see-all-btn" onclick="toggleOverlaysExpanded()">ดูทั้งหมด ▾</button>
+          </div>
+
+          <!-- 1A. Horizontal Carousel (Default View) -->
+          <div class="rox-overlays-carousel" id="rox-overlays-track">
+            <!-- Dynamically populated 7 modular stickers -->
+          </div>
+
+          <!-- 1B. Expanded Grid View (Show All & Multi-Select View) -->
+          <div class="rox-overlays-grid-wrapper hidden" id="rox-overlays-grid-wrapper">
+            <div class="stickers-batch-bar">
+              <span id="stickers-selected-count">เลือกแล้ว 7/7 ชิ้น</span>
+              <div class="stickers-batch-actions">
+                <button class="sticker-select-all-btn" onclick="toggleAllStickers(true)">เลือกทั้งหมด</button>
+                <button class="sticker-select-all-btn" onclick="toggleAllStickers(false)">ยกเลิกทั้งหมด</button>
+              </div>
+            </div>
+
+            <div class="stickers-grid" id="stickers-grid-container">
+              <!-- Sticker cards with checkboxes rendered dynamically -->
+            </div>
+
+            <button id="stickers-download-btn" class="rox-btn-primary-yellow" onclick="downloadSelectedStickers('${athleteName}')">
+              📥 ดาวน์โหลดสติกเกอร์ที่เลือก (Save PNG)
+            </button>
+          </div>
         </div>
 
-        <!-- VIEW 1: FULL GRAPHIC OVERLAY -->
-        <div id="share-view-graphic" class="share-view-panel">
-          <div class="share-options-bar">
-            <div class="share-option-heading"><span>เลือกรูปแบบ</span><small>แตะเพื่อดูตัวอย่าง</small></div>
-            <div class="share-template-selector">
+        <!-- SECTION 2: CREATE AND SHARE (FULL PHOTO OVERLAY) -->
+        <div class="rox-section">
+          <div class="rox-section-header">
+            <div>
+              <h4 class="rox-section-title">Create and share</h4>
+              <p class="rox-section-subtitle">เลือกสไตล์กราฟิกและใส่รูปภาพของคุณ</p>
+            </div>
+          </div>
+
+          <div class="rox-controls-group">
+            <div class="rox-pills-scroll share-template-selector">
               <button class="template-pill active" onclick="selectShareTemplate('classic', event)">🏆 คลาสสิก</button>
               <button class="template-pill" onclick="selectShareTemplate('minimal', event)">⚡ Editorial</button>
               <button class="template-pill" onclick="selectShareTemplate('stamp', event)">🏷️ Activity Stamp</button>
@@ -1239,8 +1277,8 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
               <button class="template-pill" onclick="selectShareTemplate('scoreboard', event)">▣ Scoreboard</button>
               <button class="template-pill" onclick="selectShareTemplate('ticket', event)">✦ Run Ticket</button>
             </div>
-            <div class="share-option-heading share-option-heading--ratio"><span>ขนาดภาพ</span><small>พร้อมแชร์ได้ทันที</small></div>
-            <div class="share-ratio-selector">
+
+            <div class="rox-pills-scroll share-ratio-selector">
               <button class="ratio-pill active" onclick="selectShareRatio('1:1', event)">🔳 1:1</button>
               <button class="ratio-pill" onclick="selectShareRatio('4:5', event)">📱 4:5 แนวตั้ง</button>
               <button class="ratio-pill" onclick="selectShareRatio('9:16', event)">📲 9:16 สตอรี่</button>
@@ -1253,56 +1291,40 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
             <img id="share-image-preview" alt="Preview Image" class="share-preview-img" />
             <div id="canvas-loading" class="canvas-loader hidden">กำลังประมวลผล...</div>
           </div>
-          
-          <div class="share-controls">
-            <div class="share-control-row">
-              <label class="custom-file-upload">
-                <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" />
-                <span>📸 เลือกรูปภาพประกอบ</span>
-              </label>
+
+          <div class="rox-photo-actions">
+            <label class="rox-btn-primary-yellow">
+              <input type="file" id="share-photo-input" accept="image/*" onchange="handleSharePhotoUpload(event)" style="display:none;" />
+              <span>📸 Choose photo (เลือกรูปภาพจากเครื่อง)</span>
+            </label>
+            
+            <div class="rox-photo-sub-row">
               <label class="transparent-bg-toggle">
                 <input type="checkbox" id="transparent-bg-checkbox" onchange="toggleTransparentBG(event)" />
-                <span>พื้นหลังโปร่งใส</span>
+                <span>🔲 พื้นหลังโปร่งใส</span>
               </label>
+              
+              <button class="rox-btn-outline" onclick="document.getElementById('share-photo-input').click()">
+                🔄 เปลี่ยนรูปภาพ
+              </button>
             </div>
-            
+
             <div class="share-slider-container hidden" id="photo-slider-wrapper">
-              <label for="share-photo-slider">
-                ↔️ เลื่อนปรับตำแหน่งรูปภาพ (ซ้าย-ขวา / บน-ล่าง)
-              </label>
+              <label for="share-photo-slider">↔️ เลื่อนปรับตำแหน่งรูปภาพ (ซ้าย-ขวา / บน-ล่าง)</label>
               <input type="range" id="share-photo-slider" min="0" max="100" value="50" oninput="handleSharePhotoSliderInput(event)" />
-            </div>
-          </div>
-        </div>
-
-        <!-- VIEW 2: STICKER PACK / MODULAR ASSETS -->
-        <div id="share-view-stickers" class="share-view-panel hidden">
-          <div class="stickers-container">
-            <div class="stickers-batch-bar">
-              <span id="stickers-selected-count">เลือกแล้ว 7/7 ชิ้น</span>
-              <div class="stickers-batch-actions">
-                <button class="sticker-select-all-btn" onclick="toggleAllStickers(true)">เลือกทั้งหมด</button>
-                <button class="sticker-select-all-btn" onclick="toggleAllStickers(false)">ยกเลิกทั้งหมด</button>
-              </div>
-            </div>
-
-            <div class="stickers-grid" id="stickers-grid-container">
-              <!-- Sticker cards rendered dynamically by renderAllStickers() -->
             </div>
           </div>
         </div>
       </div>
 
-      <div class="share-modal-footer">
-        <div id="footer-actions-graphic" style="display:contents;">
-          <button id="download-graphic-btn" class="share-btn download-btn" onclick="downloadGeneratedGraphic('${athleteName}')">📥 ดาวน์โหลดรูปภาพ</button>
-          <button id="share-graphic-btn" class="share-btn share-action-btn" onclick="shareGeneratedGraphic('${athleteName}')">📤 แชร์ไปยังแอปอื่น</button>
-        </div>
-        <div id="footer-actions-stickers" class="hidden" style="display:none; grid-column: 1 / -1; width: 100%; display: flex; gap: 8px;">
-          <button id="stickers-download-btn" class="share-btn download-btn" style="flex:1.5;" onclick="downloadSelectedStickers('${athleteName}')">📥 ดาวน์โหลดที่เลือก (Multi-Export PNG)</button>
-          <button id="stickers-share-btn" class="share-btn share-action-btn" style="flex:1;" onclick="shareSelectedStickers('${athleteName}')">📤 แชร์สติกเกอร์</button>
-        </div>
-        <p class="share-modal-tip" id="share-modal-tip-text">💡 ทิป: บนมือถือสามารถกดค้างที่รูปภาพหรือสติกเกอร์เพื่อบันทึกหรือคัดลอกได้เช่นกัน</p>
+      <!-- Bottom Fixed Action Buttons -->
+      <div class="rox-modal-footer">
+        <button id="download-graphic-btn" class="rox-btn-download-solid" onclick="downloadGeneratedGraphic('${athleteName}')">
+          📥 ดาวน์โหลดรูปภาพ (Download Image)
+        </button>
+        <button id="share-graphic-btn" class="rox-btn-share-subtle" onclick="shareGeneratedGraphic('${athleteName}')">
+          📤 แชร์ไปยังแอปอื่น (Share)
+        </button>
       </div>
     </div>
   `;
@@ -1325,7 +1347,8 @@ function openShareOverlay(athleteName, activityName, dateStr, distanceKm, moving
     isTransparentBG: false
   };
   
-  // Initial draw with default gradient
+  // Render both overlays carousel and full graphic preview immediately
+  renderAllStickers();
   refreshShareCanvas();
 }
 
@@ -2992,19 +3015,90 @@ function switchShareMode(mode) {
   }
 }
 
+let isOverlaysExpanded = false;
+
+function toggleOverlaysExpanded() {
+  isOverlaysExpanded = !isOverlaysExpanded;
+  const btn = document.getElementById('rox-toggle-grid-btn');
+  const track = document.getElementById('rox-overlays-track');
+  const gridWrapper = document.getElementById('rox-overlays-grid-wrapper');
+  
+  if (isOverlaysExpanded) {
+    if (btn) btn.textContent = 'ย่อมุมมอง ▴';
+    if (track) track.classList.add('hidden');
+    if (gridWrapper) gridWrapper.classList.remove('hidden');
+  } else {
+    if (btn) btn.textContent = 'ดูทั้งหมด ▾';
+    if (track) track.classList.remove('hidden');
+    if (gridWrapper) gridWrapper.classList.add('hidden');
+  }
+}
+
+function toggleAllStickers(select) {
+  const checkboxes = document.querySelectorAll('.sticker-checkbox');
+  checkboxes.forEach(cb => { cb.checked = select; });
+  updateStickerCount();
+}
+
+function updateStickerCount() {
+  const checkboxes = document.querySelectorAll('.sticker-checkbox');
+  const checked = document.querySelectorAll('.sticker-checkbox:checked');
+  const countEl = document.getElementById('stickers-selected-count');
+  if (countEl) {
+    countEl.textContent = `เลือกแล้ว ${checked.length}/${checkboxes.length} ชิ้น`;
+  }
+}
+
+async function downloadSelectedStickers(athleteName) {
+  const checked = Array.from(document.querySelectorAll('.sticker-checkbox:checked'));
+  if (checked.length === 0) {
+    showStickerToast('⚠️ กรุณาเลือกสติกเกอร์อย่างน้อย 1 ชิ้นเพื่อดาวน์โหลด');
+    return;
+  }
+
+  const cleanName = (athleteName || 'Athlete').replace(/\s+/g, '_');
+  const btn = document.getElementById('stickers-download-btn');
+  const origText = btn ? btn.textContent : '';
+  if (btn) btn.textContent = `⏳ กำลังบันทึก (${checked.length} ชิ้น)...`;
+
+  for (let i = 0; i < checked.length; i++) {
+    const stickerId = checked[i].dataset.sticker;
+    const canvas = document.getElementById(`sticker-canvas-${stickerId}`);
+    if (canvas) {
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `PixmeSticker_${cleanName}_${stickerId}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      if (i < checked.length - 1) {
+        await new Promise(r => setTimeout(r, 260));
+      }
+    }
+  }
+
+  if (btn) btn.textContent = '✅ บันทึกครบแล้ว!';
+  showStickerToast(`🎉 บันทึกสติกเกอร์ที่เลือก ${checked.length} ชิ้นเรียบร้อย!`);
+  setTimeout(() => {
+    if (btn) btn.textContent = origText;
+  }, 2500);
+}
+
 const STICKER_CONFIGS = [
-  { id: 'header', title: '🏷️ หัวคลับ & สโลแกน', desc: 'โลโก้คลับ สโลแกน และชื่อสมาชิก' },
-  { id: 'activity', title: '🏃 สถิติกิจกรรมของวัน', desc: 'ป้ายระยะทาง เวลา และ Pace แบบการ์ดกระจก' },
-  { id: 'target', title: '🎯 แถบเป้าหมายเดือน (100K)', desc: 'แถบความคืบหน้าและเปอร์เซ็นต์สะสมประจำเดือน' },
-  { id: 'weekly', title: '📊 กราฟแท่ง 7 วันล่าสุด', desc: 'กราฟแท่งแคปซูลทรงรียาว Strava Style' },
-  { id: 'monthly_duo', title: '📦 กล่องสถิติสะสมเดือน', desc: 'การ์ดคู่ระยะวิ่งสะสม + เวลาซ้อมรวม' },
-  { id: 'recent_logs', title: '📝 บันทึก 4 กิจกรรมล่าสุด', desc: 'การ์ดลิสต์ประวัติกิจกรรมย่อย 4 รายการ' },
-  { id: 'status_badge', title: '🏅 ป้ายสถานะ & ริบบิ้น', desc: 'ป้ายสถานะกำลังใจและเป้าหมายประจำเดือน' }
+  { id: 'activity', title: '🏃 สถิติกิจกรรม', desc: 'ป้ายระยะทาง เวลา และ Pace' },
+  { id: 'target', title: '🎯 เป้าหมาย 100K', desc: 'แถบความคืบหน้าและเปอร์เซ็นต์สะสม' },
+  { id: 'weekly', title: '📊 กราฟ 7 วัน', desc: 'แท่งแคปซูลทรงรียาว Strava' },
+  { id: 'header', title: '🏷️ หัวคลับ & ชื่อ', desc: 'โลโก้คลับ สโลแกน และชื่อสมาชิก' },
+  { id: 'monthly_duo', title: '📦 สะสมเดือน', desc: 'การ์ดคู่ระยะวิ่งสะสม + เวลาซ้อม' },
+  { id: 'recent_logs', title: '📝 4 กิจกรรมล่าสุด', desc: 'ประวัติกิจกรรมย่อย 4 รายการ' },
+  { id: 'status_badge', title: '🏅 ป้ายสถานะ', desc: 'ริบบิ้นสถานะและเป้าหมาย' }
 ];
 
 function renderAllStickers() {
-  const container = document.getElementById('stickers-grid-container');
-  if (!container || !window.currentShareData) return;
+  const track = document.getElementById('rox-overlays-track');
+  const gridContainer = document.getElementById('stickers-grid-container');
+  if (!window.currentShareData) return;
 
   const d = window.currentShareData;
   const athlete = rawActivities.find(a => a.name === d.athleteName);
@@ -3018,46 +3112,110 @@ function renderAllStickers() {
     statusMsg = `💪 เหลือเพียง ${(100 - distVal).toFixed(1)} km!`;
   }
 
-  // Generate HTML skeleton for stickers if empty
-  if (container.children.length === 0) {
-    container.innerHTML = STICKER_CONFIGS.map(s => `
-      <div class="sticker-card" id="sticker-card-${s.id}">
-        <div class="sticker-card-header">
-          <label class="sticker-select-label">
-            <input type="checkbox" class="sticker-checkbox" data-sticker="${s.id}" checked onchange="updateStickerCount()" />
-            <span>${s.title}</span>
-          </label>
-          <div class="sticker-quick-actions">
-            <button class="sticker-mini-btn" title="คัดลอกรูปภาพไป Paste ใน IG Story" onclick="copyStickerToClipboard('${s.id}')">📋 คัดลอก</button>
-            <button class="sticker-mini-btn" title="ดาวน์โหลดไฟล์ PNG โปร่งใส" onclick="downloadSingleSticker('${s.id}')">📥 PNG</button>
-          </div>
-        </div>
-        <div class="sticker-preview-box">
+  // 1. Generate Horizontal Carousel cards if empty
+  if (track && track.children.length === 0) {
+    track.innerHTML = STICKER_CONFIGS.map(s => `
+      <div class="rox-overlay-card" id="rox-card-${s.id}" onclick="copyStickerToClipboard('${s.id}')" title="แตะเพื่อคัดลอกรูปภาพไป Paste ใน IG Story">
+        <div class="rox-overlay-preview">
           <canvas id="sticker-canvas-${s.id}" style="display:none;"></canvas>
-          <img id="sticker-preview-${s.id}" class="sticker-img" alt="${s.title}" />
+          <img id="sticker-preview-${s.id}" class="sticker-img" alt="${s.id}" />
+        </div>
+        <div class="rox-overlay-info" style="justify-content: flex-end;">
+          <button class="rox-overlay-btn-copy" onclick="event.stopPropagation(); downloadSingleSticker('${s.id}')" title="ดาวน์โหลดไฟล์ PNG">📥 PNG</button>
         </div>
       </div>
     `).join('');
   }
 
+  // 2. Generate Expanded Grid cards if empty (Ultra clean without label text)
+  if (gridContainer && gridContainer.children.length === 0) {
+    gridContainer.innerHTML = STICKER_CONFIGS.map(s => `
+      <div class="sticker-card" id="sticker-grid-card-${s.id}">
+        <div class="sticker-card-header">
+          <input type="checkbox" class="sticker-checkbox" data-sticker="${s.id}" checked onchange="updateStickerCount()" />
+          <div class="sticker-quick-actions">
+            <button class="sticker-mini-btn" title="คัดลอกรูปภาพ" onclick="copyStickerToClipboard('${s.id}')">📋</button>
+            <button class="sticker-mini-btn" title="ดาวน์โหลด PNG" onclick="downloadSingleSticker('${s.id}')">📥</button>
+          </div>
+        </div>
+        <div class="sticker-preview-box" onclick="copyStickerToClipboard('${s.id}')" style="cursor:pointer;" title="แตะเพื่อคัดลอก">
+          <img id="sticker-grid-preview-${s.id}" class="sticker-img" alt="${s.id}" />
+        </div>
+      </div>
+    `).join('');
+    updateStickerCount();
+  }
+
   // Draw each sticker on its offscreen transparent canvas
-  try { renderClubHeaderSticker('header', d.athleteName); } catch (e) { console.error('Sticker header err:', e); }
   try { renderActivityStatSticker('activity', d.activityName, d.dateStr, d.distanceKm, d.movingTimeSec, d.sportType); } catch (e) { console.error('Sticker activity err:', e); }
   try { renderMonthlyTargetSticker('target', d.athleteName, distVal, progressPercent, statusMsg, selectedMonth); } catch (e) { console.error('Sticker target err:', e); }
   try { render7DayChartSticker('weekly', d.athleteName); } catch (e) { console.error('Sticker weekly err:', e); }
+  try { renderClubHeaderSticker('header', d.athleteName); } catch (e) { console.error('Sticker header err:', e); }
   try { renderMonthlyDuoSticker('monthly_duo', athlete, distVal, d.sportType, selectedMonth); } catch (e) { console.error('Sticker duo err:', e); }
   try { renderRecentWorkoutsSticker('recent_logs', d.athleteName, distVal, d.sportType); } catch (e) { console.error('Sticker logs err:', e); }
   try { renderStatusRibbonSticker('status_badge', distVal, statusMsg); } catch (e) { console.error('Sticker status err:', e); }
 
-  updateStickerCount();
+  // Drag-to-scroll support for mouse users on carousel
+  if (track && !track.dataset.dragInit) {
+    track.dataset.dragInit = 'true';
+    let isDown = false, startX, scrollLeft;
+    track.addEventListener('mousedown', (e) => {
+      isDown = true;
+      startX = e.pageX - track.offsetLeft;
+      scrollLeft = track.scrollLeft;
+    });
+    track.addEventListener('mouseleave', () => { isDown = false; });
+    track.addEventListener('mouseup', () => { isDown = false; });
+    track.addEventListener('mousemove', (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - track.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      track.scrollLeft = scrollLeft - walk;
+    });
+  }
+}
+
+async function downloadAllStickersSeq(athleteName) {
+  const cleanName = (athleteName || 'Athlete').replace(/\s+/g, '_');
+  const seeAllBtn = document.querySelector('.rox-see-all-btn');
+  const originalText = seeAllBtn ? seeAllBtn.textContent : '';
+  if (seeAllBtn) seeAllBtn.textContent = '⏳ กำลังโหลด...';
+
+  for (let i = 0; i < STICKER_CONFIGS.length; i++) {
+    const s = STICKER_CONFIGS[i];
+    const canvas = document.getElementById(`sticker-canvas-${s.id}`);
+    if (canvas) {
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `PixmeSticker_${cleanName}_${s.id}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      if (i < STICKER_CONFIGS.length - 1) {
+        await new Promise(r => setTimeout(r, 260));
+      }
+    }
+  }
+
+  if (seeAllBtn) seeAllBtn.textContent = '✅ โหลดครบแล้ว!';
+  showStickerToast(`🎉 ดาวน์โหลดสติกเกอร์ครบทั้ง ${STICKER_CONFIGS.length} ชิ้นเรียบร้อย!`);
+  setTimeout(() => {
+    if (seeAllBtn) seeAllBtn.textContent = originalText;
+  }, 2500);
 }
 
 function updateStickerImagePreview(stickerKey) {
   const canvas = document.getElementById(`sticker-canvas-${stickerKey}`);
-  const img = document.getElementById(`sticker-preview-${stickerKey}`);
-  if (canvas && img) {
-    img.src = canvas.toDataURL('image/png');
-  }
+  if (!canvas) return;
+  const dataUrl = canvas.toDataURL('image/png');
+  
+  const imgCarousel = document.getElementById(`sticker-preview-${stickerKey}`);
+  if (imgCarousel) imgCarousel.src = dataUrl;
+  
+  const imgGrid = document.getElementById(`sticker-grid-preview-${stickerKey}`);
+  if (imgGrid) imgGrid.src = dataUrl;
 }
 
 // 1. Club Header Sticker
