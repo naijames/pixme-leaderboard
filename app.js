@@ -1185,10 +1185,68 @@ function getIntervalSec() {
 // Start
 loadData();
 
+function ensureRoxfitStyles() {
+  if (document.getElementById('pixme-roxfit-inline-styles')) return;
+  const st = document.createElement('style');
+  st.id = 'pixme-roxfit-inline-styles';
+  st.textContent = `
+    .share-modal { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); opacity: 0; visibility: hidden; transition: all 0.25s ease-out; }
+    .share-modal.open { opacity: 1; visibility: visible; }
+    .share-modal-backdrop { position: absolute; inset: 0; background: transparent; }
+    .share-modal-content.roxfit-theme { position: relative; background: #0d0f15; border: 1px solid rgba(255,255,255,0.1); border-radius: 26px; width: 100%; max-width: 580px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,0.7); overflow: hidden; color: #fff; z-index: 2; }
+    .rox-nav-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.07); background: #0d0f15; }
+    .rox-nav-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin: 0; }
+    .rox-back-btn, .rox-close-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; padding: 0; }
+    .rox-modal-scroll-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 0 30px; min-width: 0; }
+    .rox-section { padding: 16px 18px; border-bottom: 1px solid rgba(255,255,255,0.06); min-width: 0; width: 100%; box-sizing: border-box; }
+    .rox-section-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+    .rox-section-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin: 0 0 2px; }
+    .rox-section-subtitle { font-size: 0.76rem; color: rgba(255,255,255,0.55); margin: 0; }
+    .rox-see-all-btn { background: rgba(252,76,2,0.12); border: 1px solid rgba(252,76,2,0.3); color: #ff8040; font-size: 0.74rem; font-weight: 700; padding: 6px 12px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
+    .rox-overlays-carousel { display: flex; gap: 10px; overflow-x: auto !important; overflow-y: hidden; scroll-snap-type: x mandatory; padding: 4px 2px 14px; -webkit-overflow-scrolling: touch; touch-action: pan-x; width: 100%; box-sizing: border-box; scrollbar-width: none; }
+    .rox-overlays-carousel::-webkit-scrollbar { display: none; }
+    .rox-overlay-card { flex: 0 0 145px !important; min-width: 145px !important; max-width: 145px !important; height: 165px; background: #141720; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; padding: 8px; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; scroll-snap-align: start; user-select: none; box-sizing: border-box; flex-shrink: 0 !important; }
+    .rox-overlay-preview { flex: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; padding: 6px; background-color: #0b0e14; background-image: linear-gradient(45deg, #111520 25%, transparent 25%), linear-gradient(-45deg, #111520 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111520 75%), linear-gradient(-45deg, transparent 75%, #111520 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0px; overflow: hidden; margin-bottom: 6px; }
+    .rox-overlay-preview img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6)); }
+    .rox-overlay-btn-copy { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; font-size: 0.65rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
+    .rox-overlays-grid-wrapper { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+    .stickers-batch-bar { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.04); padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); font-size: 0.78rem; color: rgba(255,255,255,0.8); }
+    .stickers-batch-actions { display: flex; gap: 6px; }
+    .sticker-select-all-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 600; cursor: pointer; }
+    .stickers-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; }
+    @media (min-width: 480px) { .stickers-grid { grid-template-columns: repeat(3, 1fr); } }
+    .sticker-card { background: #141720; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+    .sticker-card-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .sticker-checkbox { accent-color: #fc4c02; width: 16px; height: 16px; cursor: pointer; }
+    .sticker-quick-actions { display: flex; gap: 4px; }
+    .sticker-mini-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; border-radius: 6px; padding: 3px 6px; font-size: 0.65rem; font-weight: 600; cursor: pointer; }
+    .sticker-preview-box { padding: 10px 8px; display: flex; align-items: center; justify-content: center; min-height: 100px; background-color: #0b0e14; background-image: linear-gradient(45deg, #111520 25%, transparent 25%), linear-gradient(-45deg, #111520 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #111520 75%), linear-gradient(-45deg, transparent 75%, #111520 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0px; }
+    .sticker-preview-box img { max-width: 100%; max-height: 110px; object-fit: contain; filter: drop-shadow(0 3px 8px rgba(0,0,0,0.6)); }
+    .rox-controls-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .rox-pills-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .rox-pills-scroll::-webkit-scrollbar { display: none; }
+    .template-pill, .ratio-pill { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.75); padding: 7px 12px; border-radius: 10px; font-size: 0.74rem; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    .template-pill.active, .ratio-pill.active { background: #fc4c02; border-color: #fc4c02; color: #fff; }
+    .rox-photo-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .rox-btn-primary-yellow { background: linear-gradient(135deg, #fc4c02 0%, #ff7a00 100%); color: #fff; border: none; padding: 12px 16px; border-radius: 12px; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; width: 100%; box-sizing: border-box; }
+    .rox-btn-outline { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 9px 14px; border-radius: 10px; font-size: 0.76rem; font-weight: 600; cursor: pointer; }
+    .rox-modal-footer { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,0.08); background: #0d0f15; display: flex; flex-direction: column; gap: 8px; }
+    .rox-btn-download-solid { width: 100%; background: linear-gradient(135deg, #fc4c02 0%, #ff5500 100%); color: #fff; border: none; padding: 13px; border-radius: 14px; font-size: 0.94rem; font-weight: 700; cursor: pointer; }
+    .rox-btn-share-subtle { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #fff; padding: 11px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+    @media (max-width: 520px) {
+      .share-modal { padding: 0; align-items: flex-end; }
+      .share-modal-content.roxfit-theme { max-height: 94vh; border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-top-left-radius: 26px; border-top-right-radius: 26px; }
+    }
+  `;
+  document.head.appendChild(st);
+}
+
 // ==========================================================================
 // Workout Overlay Graphic & Sharing Functions (Roxfit-Style Clean UI)
 // ==========================================================================
 function openShareOverlay(athleteName, activityName, dateStr, distanceKm, movingTimeSec, sportType) {
+  ensureRoxfitStyles();
+  
   // 1. Create Modal Container if not exists
   let modal = document.getElementById('share-graphic-modal');
   if (!modal) {
